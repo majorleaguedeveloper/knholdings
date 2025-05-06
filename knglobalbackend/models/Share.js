@@ -4,51 +4,53 @@ const shareSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
   },
   quantity: {
     type: Number,
     required: [true, 'Please specify the number of shares'],
-    min: [1, 'Must purchase at least 1 share']
+    min: [1, 'Must purchase at least 1 share'],
   },
   pricePerShare: {
     type: Number,
-    required: [true, 'Please specify the price per share']
+    required: [true, 'Please specify the price per share'],
   },
   totalAmount: {
     type: Number,
-    required: true
+    required: true,
   },
   paymentMethod: {
     type: String,
     required: [true, 'Please specify payment method'],
-    enum: ['bank transfer', 'cash', 'check', 'other']
+    enum: ['paypal', 'bank transfer', 'skrill', 'cash', 'check', 'other'],
   },
   purchaseDate: {
     type: Date,
-    default: Date.now
+    default: Date.now,
   },
   month: {
-    type: String // e.g., "2025-05" for May 2025
+    type: String, // e.g., "2025-05" for May 2025
   },
   notes: {
-    type: String
+    type: String,
   },
   recordedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User' // The admin who recorded this purchase
-  }
+    ref: 'User', // The admin who recorded this purchase
+  },
 });
 
 // Pre-save middleware to calculate total amount and set month
-shareSchema.pre('save', function(next) {
+shareSchema.pre('save', function (next) {
   // Calculate total amount
-  this.totalAmount = this.quantity * this.pricePerShare;
-  
+  if (!this.totalAmount) {
+    this.totalAmount = this.quantity * this.pricePerShare;
+  }
+
   // Set month in YYYY-MM format for easier querying
   const date = this.purchaseDate || new Date();
   this.month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-  
+
   next();
 });
 

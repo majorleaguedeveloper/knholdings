@@ -7,20 +7,27 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
+  Picker,
 } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome } from '@expo/vector-icons';
 
 const ManageShares = () => {
+  const [members, setMembers] = useState([]);
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
   const [newShare, setNewShare] = useState({
     user: '',
+    amountPaid: '',
+    pricePerShare: 0,
     quantity: '',
-    pricePerShare: '',
-    paymentMethod: '',
+    paymentMethod: 'paypal',
+    notes: '',
   });
+  const ratePerShare = 10; // Example rate per share
 
   useEffect(() => {
     fetchShares();
@@ -28,7 +35,7 @@ const ManageShares = () => {
 
   const fetchShares = async () => {
     try {
-      const response = await axios.get('http://192.168.186.159:5000/api/admin/shares', {
+      const response = await axios.get('http://192.168.46.159:5000/api/admin/shares', {
         headers: {
           Authorization: `Bearer ${await AsyncStorage.getItem('userToken')}`,
         },
@@ -41,16 +48,55 @@ const ManageShares = () => {
     }
   };
 
-  const createSharePurchase = async () => {
-    if (!newShare.user || !newShare.quantity || !newShare.pricePerShare || !newShare.paymentMethod) {
-      Alert.alert('Error', 'Please fill in all fields');
+  const searchMembers = async (query) => {
+    setSearchQuery(query);
+    if (query.trim() === '') {
+      setMembers([]);
       return;
     }
 
     try {
+      const response = await axios.get(
+        `http://192.168.46.159:5000/api/admin/members?search=${query}`,
+        {
+          headers: {
+            Authorization: `Bearer ${await AsyncStorage.getItem('userToken')}`,
+          },
+        }
+      );
+      setMembers(response.data.data);
+    } catch (error) {
+      console.error('Error searching members:', error);
+    }
+  };
+
+  const selectUser = (user) => {
+    setSelectedUser(user);
+    setNewShare({ ...newShare, user: user._id });
+    setSearchQuery('');
+    setMembers([]);
+  };
+
+  const calculateShares = (amountPaid) => {
+    const quantity = (amountPaid / ratePerShare).toFixed(2); // Calculate shares
+    setNewShare({ ...newShare, amountPaid, quantity });
+  };
+
+  const createSharePurchase = async () => {
+    if (!newShare.user || !newShare.amountPaid || !newShare.paymentMethod) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+  
+    try {
+      const shareData = {
+        ...newShare,
+        pricePerShare: ratePerShare, // Explicitly set pricePerShare
+      };
+  
       await axios.post(
-        'http://192.168.186.159:5000/api/admin/shares',
-        newShare,
+        'http://192.168.46.159:5000/api/admin/shares',
+        shareData,
         {
           headers: {
             Authorization: `Bearer ${await AsyncStorage.getItem('userToken')}`,
@@ -58,11 +104,13 @@ const ManageShares = () => {
         }
       );
       Alert.alert('Success', 'Share purchase created');
-      setNewShare({ user: '', quantity: '', pricePerShare: '', paymentMethod: '' });
+      setNewShare({ user: '', amountPaid: '', quantity: '', paymentMethod: 'paypal', notes: '' });
+      setSelectedUser(null);
       fetchShares();
     } catch (error) {
       console.error('Error creating share purchase:', error);
-      Alert.alert('Error', 'Failed to create share purchase');
+      const errorMessage = error.response?.data?.message || 'Failed to create share purchase';
+      Alert.alert('Error', errorMessage);
     }
   };
 
@@ -78,6 +126,7 @@ const ManageShares = () => {
             <Text style={styles.shareText}>Member: {item.user.name}</Text>
             <Text style={styles.shareText}>Quantity: {item.quantity}</Text>
             <Text style={styles.shareText}>Price Per Share: {item.pricePerShare}</Text>
+            <Text style={styles.shareText}>Total Amount: {item.totalAmount}</Text>
             <Text style={styles.shareText}>Payment Method: {item.paymentMethod}</Text>
           </View>
         )}
@@ -89,28 +138,62 @@ const ManageShares = () => {
       <View style={styles.form}>
         <TextInput
           style={styles.input}
-          placeholder="Member ID"
-          value={newShare.user}
-          onChangeText={(text) => setNewShare({ ...newShare, user: text })}
+          placeholder="Search Member by Name or Email"
+          value={searchQuery}
+          onChangeText={searchMembers}
         />
+        {members.length > 0 && (
+          <FlatList
+            data={members}
+            keyExtractor={(item) => item._id}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.memberItem}
+                onPress={() => selectUser(item)}
+              >
+                <Text>{item.name} ({item.email})</Text>
+              </TouchableOpacity>
+            )}
+          />
+        )}
+        {selectedUser && (
+          <Text style={styles.selectedUserText}>
+            Selected User: {selectedUser.name} ({selectedUser.email})
+          </Text>
+        )}
+
         <TextInput
           style={styles.input}
-          placeholder="Quantity"
-          value={newShare.quantity}
-          onChangeText={(text) => setNewShare({ ...newShare, quantity: text })}
+          placeholder="Amount Paid"
+          value={newShare.amountPaid}
+          keyboardType="numeric"
+          onChangeText={calculateShares}
         />
+        <Text style={styles.calculatedSharesText}>
+          Shares: {newShare.quantity || 0}
+        </Text>
+
+        <Picker
+          selectedValue={newShare.paymentMethod}
+          style={styles.picker}
+          onValueChange={(itemValue) =>
+            setNewShare({ ...newShare, paymentMethod: itemValue })
+          }
+        >
+          <Picker.Item label="PayPal" value="paypal" />
+          <Picker.Item label="Bank Transfer" value="bank transfer" />
+          <Picker.Item label="Skrill" value="skrill" />
+          <Picker.Item label="Cash" value="cash" />
+          <Picker.Item label="Other" value="other" />
+        </Picker>
+
         <TextInput
           style={styles.input}
-          placeholder="Price Per Share"
-          value={newShare.pricePerShare}
-          onChangeText={(text) => setNewShare({ ...newShare, pricePerShare: text })}
+          placeholder="Notes (optional)"
+          value={newShare.notes}
+          onChangeText={(text) => setNewShare({ ...newShare, notes: text })}
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Payment Method"
-          value={newShare.paymentMethod}
-          onChangeText={(text) => setNewShare({ ...newShare, paymentMethod: text })}
-        />
+
         <TouchableOpacity style={styles.button} onPress={createSharePurchase}>
           <FontAwesome name="plus" size={16} color="#fff" />
           <Text style={styles.buttonText}>Create Share Purchase</Text>
@@ -161,6 +244,27 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: '#ddd',
+  },
+  memberItem: {
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    marginBottom: 5,
+    borderRadius: 5,
+  },
+  selectedUserText: {
+    fontSize: 16,
+    marginBottom: 10,
+    color: '#007AFF',
+  },
+  calculatedSharesText: {
+    fontSize: 16,
+    marginBottom: 10,
+    fontWeight: 'bold',
+  },
+  picker: {
+    backgroundColor: '#fff',
+    borderRadius: 5,
+    marginBottom: 10,
   },
   button: {
     flexDirection: 'row',

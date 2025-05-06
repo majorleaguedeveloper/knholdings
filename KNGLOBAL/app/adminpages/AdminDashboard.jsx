@@ -20,9 +20,9 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const [membersRes, sharesRes, announcementsRes] = await Promise.all([
-        axios.get('http://192.168.186.159:5000/api/admin/members'),
-        axios.get('http://192.168.186.159:5000/api/admin/shares'),
-        axios.get('http://192.168.186.159:5000/api/admin/announcements'),
+        axios.get('http://192.168.46.159:5000/api/admin/members'),
+        axios.get('http://192.168.46.159:5000/api/admin/shares'),
+        axios.get('http://192.168.46.159:5000/api/admin/announcements'),
       ]);
 
       setDashboardData({
@@ -62,13 +62,13 @@ const AdminDashboard = () => {
         ))}
       </View>
 
-      <TouchableOpacity onPress={() => router.push('/admin/members')}>
+      <TouchableOpacity onPress={() => router.push('/adminpages/ManageMembers')}>
         <Text>Manage Members</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push('/admin/shares')}>
+      <TouchableOpacity onPress={() => router.push('/adminpages/ManageShares')}>
         <Text>Manage Shares</Text>
       </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push('/admin/announcements')}>
+      <TouchableOpacity onPress={() => router.push('/adminpages/ManageAnnouncements')}>
         <Text>Manage Announcements</Text>
       </TouchableOpacity>
     </ScrollView>

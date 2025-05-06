@@ -23,7 +23,7 @@ const ManageMembers = () => {
 
   const fetchMembers = async () => {
     try {
-      const response = await axios.get('http://192.168.186.159:5000/api/admin/members', {
+      const response = await axios.get('http://192.168.46.159:5000/api/admin/members', {
         headers: {
           Authorization: `Bearer ${await AsyncStorage.getItem('userToken')}`,
         },
@@ -39,7 +39,7 @@ const ManageMembers = () => {
   const updateMemberStatus = async (id, status) => {
     try {
       await axios.put(
-        `http://192.168.186.159:5000/api/admin/members/${id}/status`,
+        `http://192.168.46.159:5000/api/admin/members/${id}/status`,
         { status },
         {
           headers: {

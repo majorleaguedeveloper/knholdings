@@ -71,9 +71,9 @@ const Dashboard = () => {
 
       if (user.role === 'admin') {
         const [membersRes, sharesStatsRes, allSharesRes] = await Promise.all([
-          axios.get('http://192.168.186.159:5000/api/admin/members', config),
-          axios.get('http://192.168.186.159:5000/api/shares/stats', config),
-          axios.get('http://192.168.186.159:5000/api/admin/shares', config),
+          axios.get('http://192.168.46.159:5000/api/admin/members', config),
+          axios.get('http://192.168.46.159:5000/api/shares/stats', config),
+          axios.get('http://192.168.46.159:5000/api/admin/shares', config),
         ]);
 
         setDashboardData({
@@ -86,8 +86,8 @@ const Dashboard = () => {
         });
       } else {
         const [memberSharesRes, announcementsRes] = await Promise.all([
-          axios.get('http://192.168.186.159:5000/api/member/shares', config),
-          axios.get('http://192.168.186.159:5000/api/member/announcements', config),
+          axios.get('http://192.168.46.159:5000/api/member/shares', config),
+          axios.get('http://192.168.46.159:5000/api/member/announcements', config),
         ]);
 
         setDashboardData({

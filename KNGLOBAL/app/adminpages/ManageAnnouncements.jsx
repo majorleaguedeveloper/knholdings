@@ -27,7 +27,7 @@ const ManageAnnouncements = () => {
 
   const fetchAnnouncements = async () => {
     try {
-      const response = await axios.get('http://192.168.186.159:5000/api/admin/announcements', {
+      const response = await axios.get('http://192.168.46.159:5000/api/admin/announcements', {
         headers: {
           Authorization: `Bearer ${await AsyncStorage.getItem('userToken')}`,
         },
@@ -48,7 +48,7 @@ const ManageAnnouncements = () => {
 
     try {
       await axios.post(
-        'http://192.168.186.159:5000/api/admin/announcements',
+        'http://192.168.46.159:5000/api/admin/announcements',
         newAnnouncement,
         {
           headers: {

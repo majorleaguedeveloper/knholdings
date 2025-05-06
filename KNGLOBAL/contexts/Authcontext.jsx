@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
 
-  const API_URL = 'http://192.168.186.159:5000';
+  const API_URL = 'http://192.168.46.159:5000';
 
   // Load token from storage on app start
   useEffect(() => {

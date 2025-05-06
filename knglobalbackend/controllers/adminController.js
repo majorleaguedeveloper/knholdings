@@ -87,42 +87,54 @@ exports.updateMemberStatus = async (req, res) => {
   }
 };
 
+
 // @desc    Create new share purchase for a member
 // @route   POST /api/admin/shares
 // @access  Private/Admin
 exports.createSharePurchase = async (req, res) => {
   try {
-    const { user, quantity, pricePerShare, paymentMethod, purchaseDate, notes } = req.body;
-    
-    // Check if member exists
+    const { user, amountPaid, quantity, paymentMethod } = req.body;
+
+    // Validate required fields
+    if (!user) {
+      return res.status(400).json({ success: false, message: 'User ID is required' });
+    }
+    if (!amountPaid || isNaN(amountPaid) || amountPaid <= 0) {
+      return res.status(400).json({ success: false, message: 'Amount paid must be a positive number' });
+    }
+    if (!quantity || isNaN(quantity) || quantity <= 0) {
+      return res.status(400).json({ success: false, message: 'Quantity must be a positive number' });
+    }
+    const validPaymentMethods = ['paypal', 'bank transfer', 'skrill', 'cash', 'check', 'other'];
+    if (!paymentMethod || !validPaymentMethods.includes(paymentMethod)) {
+      return res.status(400).json({ success: false, message: 'Invalid payment method' });
+    }
+
+    // Check if the user exists and is a member
     const member = await User.findById(user);
     if (!member || member.role !== 'member') {
-      return res.status(404).json({
-        success: false,
-        message: 'Member not found'
-      });
+      return res.status(404).json({ success: false, message: 'Member not found or invalid role' });
     }
-    
-    // Create share purchase
+
+    // Set pricePerShare and calculate totalAmount
+    const pricePerShare = 10; // Example rate per share
+    const totalAmount = quantity * pricePerShare;
+
+    // Create the share purchase
     const sharePurchase = await Share.create({
       user,
+      amountPaid,
       quantity,
       pricePerShare,
+      totalAmount,
       paymentMethod,
-      purchaseDate: purchaseDate || Date.now(),
-      notes,
-      recordedBy: req.user.id // Current admin
+      recordedBy: req.user.id, // Assuming `req.user` contains the admin's ID
     });
-    
-    res.status(201).json({
-      success: true,
-      data: sharePurchase
-    });
+
+    res.status(201).json({ success: true, data: sharePurchase });
   } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message
-    });
+    console.error('Error creating share purchase:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
