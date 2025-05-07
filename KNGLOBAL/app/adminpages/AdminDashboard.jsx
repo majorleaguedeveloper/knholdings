@@ -20,9 +20,9 @@ const AdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       const [membersRes, sharesRes, announcementsRes] = await Promise.all([
-        axios.get('http://192.168.46.159:5000/api/admin/members'),
-        axios.get('http://192.168.46.159:5000/api/admin/shares'),
-        axios.get('http://192.168.46.159:5000/api/admin/announcements'),
+        axios.get('http://192.168.45.159:5000/api/admin/members'),
+        axios.get('http://192.168.45.159:5000/api/admin/shares'),
+        axios.get('http://192.168.45.159:5000/api/admin/announcements'),
       ]);
 
       setDashboardData({

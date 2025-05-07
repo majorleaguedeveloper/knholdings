@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import AuthContext from '../../contexts/Authcontext'; // Adjust the path if necessary
+import { router } from 'expo-router';
 
 const Profile = () => {
     const { userData, logout } = useContext(AuthContext);
@@ -11,7 +12,7 @@ const Profile = () => {
       try {
         await logout();
         Alert.alert('Logged Out', 'You have been logged out successfully.');
-        navigation.navigate('Login');
+        router.push('/auth/login'); // Redirect to login page
       } catch (error) {
         Alert.alert('Error', 'Failed to log out. Please try again.');
       }

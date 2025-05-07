@@ -27,7 +27,7 @@ require('./config/db')();
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/member', memberRoutes);
+app.use('/api/member', memberRoutes); 
 app.use('/api/shares', sharesRoutes);
 
 // Error handling middleware
@@ -44,4 +44,4 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`); 
-});
+}); 

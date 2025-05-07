@@ -71,9 +71,9 @@ const Dashboard = () => {
 
       if (user.role === 'admin') {
         const [membersRes, sharesStatsRes, allSharesRes] = await Promise.all([
-          axios.get('http://192.168.46.159:5000/api/admin/members', config),
-          axios.get('http://192.168.46.159:5000/api/shares/stats', config),
-          axios.get('http://192.168.46.159:5000/api/admin/shares', config),
+          axios.get('http://192.168.45.159:5000/api/admin/members', config),
+          axios.get('http://192.168.45.159:5000/api/shares/stats', config),
+          axios.get('http://192.168.45.159:5000/api/admin/shares', config),
         ]);
 
         setDashboardData({
@@ -86,8 +86,8 @@ const Dashboard = () => {
         });
       } else {
         const [memberSharesRes, announcementsRes] = await Promise.all([
-          axios.get('http://192.168.46.159:5000/api/member/shares', config),
-          axios.get('http://192.168.46.159:5000/api/member/announcements', config),
+          axios.get('http://192.168.45.159:5000/api/member/shares', config),
+          axios.get('http://192.168.45.159:5000/api/member/announcements', config),
         ]);
 
         setDashboardData({
@@ -181,6 +181,11 @@ const Dashboard = () => {
         style={styles.scrollView}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <view>
+          <TouchableOpacity onPress={() => router.push('/memberpages/MemberDashboard')}>
+            <Text>MemberDashboard</Text>
+          </TouchableOpacity>
+        </view>
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>Your Shares</Text>
           <Text style={styles.cardValue}>{dashboardData.memberShares}</Text>

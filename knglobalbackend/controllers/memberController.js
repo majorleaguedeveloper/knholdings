@@ -1,4 +1,5 @@
-const User = require('../models/User');
+const mongoose = require('mongoose');
+const User = require('../models/User'); 
 const Share = require('../models/Share');
 const Announcement = require('../models/Announcement');
 
@@ -78,8 +79,8 @@ exports.getMemberSharesByMonth = async (req, res) => {
   try {
     // Aggregate shares by month
     const monthlyShares = await Share.aggregate([
-      // Match documents for this user
-      { $match: { user: mongoose.Types.ObjectId(req.user.id) } },
+      // Match documents for this user - using the new keyword with ObjectId
+      { $match: { user: new mongoose.Types.ObjectId(req.user.id) } },
       
       // Group by month
       { $group: {
@@ -107,6 +108,7 @@ exports.getMemberSharesByMonth = async (req, res) => {
       data: monthlyShares
     });
   } catch (error) {
+    console.error('Error in getMemberSharesByMonth:', error);
     res.status(400).json({
       success: false,
       message: error.message
