@@ -33,7 +33,7 @@ const AllAnnouncements = () => {
       };
       
       const response = await axios.get(
-        'http://192.168.45.159:5000/api/member/announcements', 
+        'http://192.168.108.159:5000/api/member/announcements', 
         config
       );
 

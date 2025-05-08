@@ -35,7 +35,7 @@ const ManageShares = () => {
 
   const fetchShares = async () => {
     try {
-      const response = await axios.get('http://192.168.45.159:5000/api/admin/shares', {
+      const response = await axios.get('http://192.168.108.159:5000/api/admin/shares', {
         headers: {
           Authorization: `Bearer ${await AsyncStorage.getItem('userToken')}`,
         },
@@ -57,7 +57,7 @@ const ManageShares = () => {
 
     try {
       const response = await axios.get(
-        `http://192.168.45.159:5000/api/admin/members?search=${query}`,
+        `http://192.168.108.159:5000/api/admin/members?search=${query}`,
         {
           headers: {
             Authorization: `Bearer ${await AsyncStorage.getItem('userToken')}`,
@@ -95,7 +95,7 @@ const ManageShares = () => {
       };
   
       await axios.post(
-        'http://192.168.45.159:5000/api/admin/shares',
+        'http://192.168.108.159:5000/api/admin/shares',
         shareData,
         {
           headers: {
