@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,40 @@ import {
   TouchableOpacity,
   Alert,
   StyleSheet,
-  Picker,
+  Platform,
+  ActivityIndicator,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  ScrollView,
+  RefreshControl
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FontAwesome } from '@expo/vector-icons';
+import { 
+  FontAwesome, 
+  MaterialIcons, 
+  Ionicons,
+  AntDesign 
+} from '@expo/vector-icons';
+import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
+import { StatusBar } from 'expo-status-bar';
+
+const API_BASE_URL = 'http://192.168.108.159:5000/api';
 
 const ManageShares = () => {
+  // Load fonts
+  const [fontsLoaded] = useFonts({
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold
+  });
+
   const [members, setMembers] = useState([]);
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [newShare, setNewShare] = useState({
@@ -29,24 +53,39 @@ const ManageShares = () => {
   });
   const ratePerShare = 10; // Example rate per share
 
-  useEffect(() => {
-    fetchShares();
-  }, []);
-
-  const fetchShares = async () => {
+  const fetchShares = useCallback(async () => {
     try {
-      const response = await axios.get('http://192.168.108.159:5000/api/admin/shares', {
-        headers: {
-          Authorization: `Bearer ${await AsyncStorage.getItem('userToken')}`,
-        },
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        Alert.alert('Session Error', 'Please log in again');
+        return;
+      }
+      
+      const response = await axios.get(`${API_BASE_URL}/admin/shares`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+      
       setShares(response.data.data);
     } catch (error) {
       console.error('Error fetching shares:', error);
+      const errorMsg = error.response?.data?.message || 'Failed to load shares';
+      Alert.alert('Error', errorMsg);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
+
+  // Initial data load
+  useEffect(() => {
+    fetchShares();
+  }, [fetchShares]);
+
+  // Pull to refresh handler
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchShares();
+  }, [fetchShares]);
 
   const searchMembers = async (query) => {
     setSearchQuery(query);
@@ -56,13 +95,10 @@ const ManageShares = () => {
     }
 
     try {
+      const token = await AsyncStorage.getItem('userToken');
       const response = await axios.get(
-        `http://192.168.108.159:5000/api/admin/members?search=${query}`,
-        {
-          headers: {
-            Authorization: `Bearer ${await AsyncStorage.getItem('userToken')}`,
-          },
-        }
+        `${API_BASE_URL}/admin/members?search=${query}`,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setMembers(response.data.data);
     } catch (error) {
@@ -78,32 +114,35 @@ const ManageShares = () => {
   };
 
   const calculateShares = (amountPaid) => {
-    const quantity = (amountPaid / ratePerShare).toFixed(2); // Calculate shares
+    if (!amountPaid || isNaN(parseFloat(amountPaid))) {
+      setNewShare({ ...newShare, amountPaid, quantity: '0' });
+      return;
+    }
+    
+    const quantity = (parseFloat(amountPaid) / ratePerShare).toFixed(2);
     setNewShare({ ...newShare, amountPaid, quantity });
   };
 
   const createSharePurchase = async () => {
     if (!newShare.user || !newShare.amountPaid || !newShare.paymentMethod) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Missing Information', 'Please fill in all required fields');
       return;
     }
   
     try {
+      const token = await AsyncStorage.getItem('userToken');
       const shareData = {
         ...newShare,
-        pricePerShare: ratePerShare, // Explicitly set pricePerShare
+        pricePerShare: ratePerShare,
       };
   
       await axios.post(
-        'http://192.168.108.159:5000/api/admin/shares',
+        `${API_BASE_URL}/admin/shares`,
         shareData,
-        {
-          headers: {
-            Authorization: `Bearer ${await AsyncStorage.getItem('userToken')}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      Alert.alert('Success', 'Share purchase created');
+      
+      Alert.alert('Success', 'Share purchase recorded successfully');
       setNewShare({ user: '', amountPaid: '', quantity: '', paymentMethod: 'paypal', notes: '' });
       setSelectedUser(null);
       fetchShares();
@@ -114,170 +153,596 @@ const ManageShares = () => {
     }
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Manage Shares</Text>
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
-      <FlatList
-        data={shares}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => (
-          <View style={styles.shareCard}>
-            <Text style={styles.shareText}>Member: {item.user.name}</Text>
-            <Text style={styles.shareText}>Quantity: {item.quantity}</Text>
-            <Text style={styles.shareText}>Price Per Share: {item.pricePerShare}</Text>
-            <Text style={styles.shareText}>Total Amount: {item.totalAmount}</Text>
-            <Text style={styles.shareText}>Payment Method: {item.paymentMethod}</Text>
-          </View>
-        )}
-        ListEmptyComponent={
-          !loading && <Text style={styles.noDataText}>No shares found</Text>
-        }
-      />
-
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Search Member by Name or Email"
-          value={searchQuery}
-          onChangeText={searchMembers}
-        />
-        {members.length > 0 && (
-          <FlatList
-            data={members}
-            keyExtractor={(item) => item._id}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={styles.memberItem}
-                onPress={() => selectUser(item)}
-              >
-                <Text>{item.name} ({item.email})</Text>
-              </TouchableOpacity>
-            )}
-          />
-        )}
-        {selectedUser && (
-          <Text style={styles.selectedUserText}>
-            Selected User: {selectedUser.name} ({selectedUser.email})
-          </Text>
-        )}
-
-        <TextInput
-          style={styles.input}
-          placeholder="Amount Paid"
-          value={newShare.amountPaid}
-          keyboardType="numeric"
-          onChangeText={calculateShares}
-        />
-        <Text style={styles.calculatedSharesText}>
-          Shares: {newShare.quantity || 0}
-        </Text>
-
-        <Picker
-          selectedValue={newShare.paymentMethod}
-          style={styles.picker}
-          onValueChange={(itemValue) =>
-            setNewShare({ ...newShare, paymentMethod: itemValue })
-          }
-        >
-          <Picker.Item label="PayPal" value="paypal" />
-          <Picker.Item label="Bank Transfer" value="bank transfer" />
-          <Picker.Item label="Skrill" value="skrill" />
-          <Picker.Item label="Cash" value="cash" />
-          <Picker.Item label="Other" value="other" />
-        </Picker>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Notes (optional)"
-          value={newShare.notes}
-          onChangeText={(text) => setNewShare({ ...newShare, notes: text })}
-        />
-
-        <TouchableOpacity style={styles.button} onPress={createSharePurchase}>
-          <FontAwesome name="plus" size={16} color="#fff" />
-          <Text style={styles.buttonText}>Create Share Purchase</Text>
-        </TouchableOpacity>
+  // Display loading until fonts are loaded
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3498db" />
       </View>
-    </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar style="dark" />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidView}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Manage Shares</Text>
+          <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
+            <Ionicons name="refresh" size={22} color="#3498db" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.sharesList}>
+          {loading ? (
+            <ActivityIndicator size="large" color="#3498db" />
+          ) : (
+            <FlatList
+              data={shares}
+              keyExtractor={(item) => item._id}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              }
+              renderItem={({ item }) => (
+                <View style={styles.shareCard}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardHeaderLeft}>
+                      <Text style={styles.memberName}>{item.user.name}</Text>
+                      <Text style={styles.memberEmail}>{item.user.email}</Text>
+                    </View>
+                    <View style={styles.cardHeaderRight}>
+                      <Text style={styles.cardDate}>
+                        {formatDate(item.createdAt)}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.cardDivider} />
+                  
+                  <View style={styles.shareDetails}>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Shares:</Text>
+                      <Text style={styles.detailValue}>{parseFloat(item.quantity).toFixed(2)}</Text>
+                    </View>
+                    
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Price/Share:</Text>
+                      <Text style={styles.detailValue}>${parseFloat(item.pricePerShare).toFixed(2)}</Text>
+                    </View>
+                    
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Total Amount:</Text>
+                      <Text style={styles.detailHighlight}>${parseFloat(item.amountPaid).toFixed(2)}</Text>
+                    </View>
+                    
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Payment Method:</Text>
+                      <View style={styles.paymentMethodTag}>
+                        <Text style={styles.paymentMethodText}>
+                          {item.paymentMethod.charAt(0).toUpperCase() + item.paymentMethod.slice(1)}
+                        </Text>
+                      </View>
+                    </View>
+                    
+                    {item.notes && (
+                      <View style={styles.notesContainer}>
+                        <Text style={styles.notesLabel}>Notes:</Text>
+                        <Text style={styles.notesText}>{item.notes}</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              )}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="document-text-outline" size={60} color="#ccc" />
+                  <Text style={styles.emptyText}>No shares found</Text>
+                  <Text style={styles.emptySubText}>
+                    Add new shares using the form below
+                  </Text>
+                </View>
+              }
+            />
+          )}
+        </View>
+
+        <ScrollView style={styles.formContainer}>
+          <Text style={styles.formTitle}>Add New Share Purchase</Text>
+          
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Select Member</Text>
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by name or email..."
+                placeholderTextColor="#A0A0A0"
+                value={searchQuery}
+                onChangeText={searchMembers}
+              />
+              <MaterialIcons name="search" size={20} color="#A0A0A0" style={styles.searchIcon} />
+            </View>
+            
+            {members.length > 0 && (
+              <View style={styles.membersList}>
+                <FlatList
+                  data={members}
+                  keyExtractor={(item) => item._id}
+                  nestedScrollEnabled={true}
+                  scrollEnabled={true}
+                  style={{ maxHeight: 150 }}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.memberItem}
+                      onPress={() => selectUser(item)}
+                    >
+                      <AntDesign name="user" size={16} color="#3498db" style={styles.memberIcon} />
+                      <View>
+                        <Text style={styles.memberItemName}>{item.name}</Text>
+                        <Text style={styles.memberItemEmail}>{item.email}</Text>
+                      </View>
+                      <AntDesign name="right" size={14} color="#A0A0A0" style={styles.rightIcon} />
+                    </TouchableOpacity>
+                  )}
+                />
+              </View>
+            )}
+            
+            {selectedUser && (
+              <View style={styles.selectedUser}>
+                <AntDesign name="checkcircle" size={18} color="#27ae60" style={styles.selectedIcon} />
+                <View>
+                  <Text style={styles.selectedUserName}>{selectedUser.name}</Text>
+                  <Text style={styles.selectedUserEmail}>{selectedUser.email}</Text>
+                </View>
+                <TouchableOpacity 
+                  style={styles.clearSelection}
+                  onPress={() => {
+                    setSelectedUser(null);
+                    setNewShare({ ...newShare, user: '' });
+                  }}
+                >
+                  <AntDesign name="close" size={20} color="#e74c3c" />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+          
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Amount Paid</Text>
+            <View style={styles.inputWithIcon}>
+              <TextInput
+                style={styles.amountInput}
+                placeholder="0.00"
+                placeholderTextColor="#A0A0A0"
+                value={newShare.amountPaid}
+                keyboardType="numeric"
+                onChangeText={calculateShares}
+              />
+              <Text style={styles.currencySymbol}>$</Text>
+            </View>
+            
+            <View style={styles.calculatedShares}>
+              <Text style={styles.calculatedSharesLabel}>Shares to be purchased:</Text>
+              <Text style={styles.calculatedSharesValue}>
+                {parseFloat(newShare.quantity || 0).toFixed(2)}
+              </Text>
+              <Text style={styles.sharesRate}>
+                (Rate: ${ratePerShare}/share)
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Payment Method</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={newShare.paymentMethod}
+                style={styles.picker}
+                dropdownIconColor="#3498db"
+                onValueChange={(itemValue) =>
+                  setNewShare({ ...newShare, paymentMethod: itemValue })
+                }
+              >
+                <Picker.Item label="PayPal" value="paypal" />
+                <Picker.Item label="Bank Transfer" value="bank transfer" />
+                <Picker.Item label="Skrill" value="skrill" />
+                <Picker.Item label="Cash" value="cash" />
+                <Picker.Item label="Other" value="other" />
+              </Picker>
+            </View>
+          </View>
+          
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Notes (Optional)</Text>
+            <TextInput
+              style={styles.notesInput}
+              placeholder="Add any additional information..."
+              placeholderTextColor="#A0A0A0"
+              value={newShare.notes}
+              onChangeText={(text) => setNewShare({ ...newShare, notes: text })}
+              multiline={true}
+              numberOfLines={3}
+            />
+          </View>
+          
+          <TouchableOpacity 
+            style={[
+              styles.submitButton, 
+              (!selectedUser || !newShare.amountPaid) && styles.submitButtonDisabled
+            ]} 
+            onPress={createSharePurchase}
+            disabled={!selectedUser || !newShare.amountPaid}
+          >
+            <FontAwesome name="plus" size={18} color="#fff" />
+            <Text style={styles.submitButtonText}>Create Share Purchase</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
+const COLORS = {
+  primary: '#3498db',
+  secondary: '#2ecc71',
+  accent: '#f39c12',
+  background: '#f8f9fa',
+  cardBg: '#ffffff',
+  text: '#2c3e50',
+  textLight: '#7f8c8d',
+  border: '#e0e0e0',
+  danger: '#e74c3c',
+  success: '#27ae60',
+};
+
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: COLORS.background,
+  },
+  keyboardAvoidView: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.cardBg,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.text,
+  },
+  refreshButton: {
+    padding: 8,
+  },
+  sharesList: {
+    flex: 1,
+    padding: 15,
   },
   shareCard: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 12,
+    marginBottom: 15,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  shareText: {
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  noDataText: {
-    textAlign: 'center',
-    fontSize: 16,
-    color: '#888',
-  },
-  form: {
-    marginTop: 20,
-  },
-  input: {
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 5,
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 10,
+  },
+  cardHeaderLeft: {
+    flex: 1,
+  },
+  memberName: {
+    fontSize: 18,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  memberEmail: {
+    fontSize: 14,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textLight,
+  },
+  cardHeaderRight: {},
+  cardDate: {
+    fontSize: 12,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textLight,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 10,
+  },
+  shareDetails: {
+    marginTop: 5,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.textLight,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.text,
+  },
+  detailHighlight: {
+    fontSize: 16,
+    fontFamily: 'Outfit_700Bold',
+    color: COLORS.primary,
+  },
+  paymentMethodTag: {
+    backgroundColor: COLORS.primary + '20', // 20% opacity
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  paymentMethodText: {
+    fontSize: 13,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.primary,
+  },
+  notesContainer: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.accent,
+  },
+  notesLabel: {
+    fontSize: 14,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.textLight,
+    marginBottom: 3,
+  },
+  notesText: {
+    fontSize: 14,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.text,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.textLight,
+    marginTop: 15,
+  },
+  emptySubText: {
+    fontSize: 14,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textLight,
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  formContainer: {
+    backgroundColor: COLORS.cardBg,
+    paddingTop: 15,
+    paddingHorizontal: 20,
+    paddingBottom: 25,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  formTitle: {
+    fontSize: 18,
+    fontFamily: 'Outfit_600SemiBold',
+    color: COLORS.text,
+    marginBottom: 15,
+  },
+  fieldContainer: {
+    marginBottom: 15,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.text,
+    marginBottom: 6,
+  },
+  searchContainer: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchInput: {
+    backgroundColor: COLORS.background,
+    padding: 12,
+    paddingRight: 40,
+    borderRadius: 8,
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 15,
+    color: COLORS.text,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: COLORS.border,
+    flex: 1,
+  },
+  searchIcon: {
+    position: 'absolute',
+    right: 12,
+  },
+  membersList: {
+    marginTop: 5,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    backgroundColor: COLORS.background,
   },
   memberItem: {
-    padding: 10,
-    backgroundColor: '#f0f0f0',
-    marginBottom: 5,
-    borderRadius: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
-  selectedUserText: {
-    fontSize: 16,
-    marginBottom: 10,
-    color: '#007AFF',
+  memberIcon: {
+    marginRight: 10,
   },
-  calculatedSharesText: {
+  memberItemName: {
+    fontSize: 14,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.text,
+  },
+  memberItemEmail: {
+    fontSize: 12,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textLight,
+  },
+  rightIcon: {
+    marginLeft: 'auto',
+  },
+  selectedUser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.success + '15', // 15% opacity
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  selectedIcon: {
+    marginRight: 10,
+  },
+  selectedUserName: {
+    fontSize: 15,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.text,
+  },
+  selectedUserEmail: {
+    fontSize: 13,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textLight,
+  },
+  clearSelection: {
+    marginLeft: 'auto',
+    padding: 5,
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  amountInput: {
+    flex: 1,
+    padding: 12,
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 15,
+    color: COLORS.text,
+  },
+  currencySymbol: {
+    paddingHorizontal: 12,
+    fontSize: 18,
+    fontFamily: 'Outfit_500Medium',
+    color: COLORS.textLight,
+  },
+  calculatedShares: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    flexWrap: 'wrap',
+  },
+  calculatedSharesLabel: {
+    fontSize: 14,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.text,
+    marginRight: 5,
+  },
+  calculatedSharesValue: {
     fontSize: 16,
-    marginBottom: 10,
-    fontWeight: 'bold',
+    fontFamily: 'Outfit_700Bold',
+    color: COLORS.primary,
+    marginRight: 5,
+  },
+  sharesRate: {
+    fontSize: 12,
+    fontFamily: 'Outfit_400Regular',
+    color: COLORS.textLight,
+  },
+  pickerContainer: {
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    overflow: 'hidden',
   },
   picker: {
-    backgroundColor: '#fff',
-    borderRadius: 5,
-    marginBottom: 10,
+    height: 50,
+    width: '100%',
+    color: COLORS.text,
+    backgroundColor: 'transparent',
   },
-  button: {
+  notesInput: {
+    backgroundColor: COLORS.background,
+    padding: 12,
+    borderRadius: 8,
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 15,
+    color: COLORS.text,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  submitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#007AFF',
+    backgroundColor: COLORS.primary,
     padding: 15,
-    borderRadius: 5,
+    borderRadius: 8,
+    marginTop: 10,
   },
-  buttonText: {
+  submitButtonDisabled: {
+    backgroundColor: COLORS.primary + '80', // 80% opacity
+  },
+  submitButtonText: {
     color: '#fff',
     fontSize: 16,
-    marginLeft: 10,
+    fontFamily: 'Outfit_600SemiBold',
+    marginLeft: 8,
   },
 });
 
