@@ -26,7 +26,7 @@ import {
 import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { StatusBar } from 'expo-status-bar';
 
-const API_BASE_URL = 'http://192.168.108.159:5000/api';
+const API_BASE_URL = 'http://192.168.220.159:5000/api';
 
 const ManageShares = () => {
   // Load fonts

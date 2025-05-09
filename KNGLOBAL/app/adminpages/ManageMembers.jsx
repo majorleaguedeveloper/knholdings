@@ -26,7 +26,7 @@ import {
   Outfit_700Bold
 } from '@expo-google-fonts/outfit';
 
-const BASE_URL = 'http://192.168.108.159:5000';
+const BASE_URL = 'http://192.168.220.159:5000';
 
 const ManageMembers = () => {
   const [members, setMembers] = useState([]);
