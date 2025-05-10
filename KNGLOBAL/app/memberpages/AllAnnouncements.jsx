@@ -22,7 +22,7 @@ import * as SplashScreen from 'expo-splash-screen';
 SplashScreen.preventAutoHideAsync();
 
 const CACHED_ANNOUNCEMENTS_KEY = 'cached_announcements';
-const API_URL = 'http://192.168.176.253:5000/api/member/announcements';
+const API_URL = 'https://knholdingsbackend.onrender.com/api/member/announcements';
 
 const AllAnnouncements = () => {
   const { userToken } = useContext(AuthContext);

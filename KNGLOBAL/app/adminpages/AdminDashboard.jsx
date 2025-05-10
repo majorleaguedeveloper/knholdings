@@ -56,9 +56,9 @@ const AdminDashboard = () => {
     setRefreshing(true);
     try {
       const [membersRes, sharesRes, announcementsRes] = await Promise.all([
-        axios.get('http://192.168.176.253:5000/api/admin/members'),
-        axios.get('http://192.168.176.253:5000/api/admin/shares'),
-        axios.get('http://192.168.176.253:5000/api/admin/announcements'),
+        axios.get('https://knholdingsbackend.onrender.com/api/admin/members'),
+        axios.get('https://knholdingsbackend.onrender.com/api/admin/shares'),
+        axios.get('https://knholdingsbackend.onrender.com/api/admin/announcements'),
       ]);
 
       const newData = {

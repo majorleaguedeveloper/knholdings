@@ -73,7 +73,7 @@ const UpdateProfile = () => {
         },
       };
       
-      const response = await axios.get('http://192.168.176.253:5000/api/member/profile', config);
+      const response = await axios.get('https://knholdingsbackend.onrender.com/api/member/profile', config);
       
       if (response.data.success) {
         const { name, phone } = response.data.data;
@@ -143,7 +143,7 @@ const UpdateProfile = () => {
       };
       
       const response = await axios.put(
-        'http://192.168.176.253:5000/api/member/profile',
+        'https://knholdingsbackend.onrender.com/api/member/profile',
         formData,
         config
       );

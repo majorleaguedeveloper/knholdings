@@ -27,7 +27,7 @@ import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outf
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 
-const API_BASE_URL = 'http://192.168.176.253:5000/api';
+const API_BASE_URL = 'https://knholdingsbackend.onrender.com/api';
 
 const ManageShares = () => {
   // Load fonts

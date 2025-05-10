@@ -87,7 +87,7 @@ const ManageAnnouncements = () => {
         return;
       }
       
-      const response = await axios.get('http://192.168.176.253:5000/api/admin/announcements', {
+      const response = await axios.get('https://knholdingsbackend.onrender.com/api/admin/announcements', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -148,7 +148,7 @@ const ManageAnnouncements = () => {
       const token = await AsyncStorage.getItem('userToken');
       
       const response = await axios.post(
-        'http://192.168.176.253:5000/api/admin/announcements',
+        'https://knholdingsbackend.onrender.com/api/admin/announcements',
         newAnnouncement,
         {
           headers: {

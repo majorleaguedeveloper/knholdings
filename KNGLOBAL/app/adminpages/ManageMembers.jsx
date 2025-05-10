@@ -26,7 +26,7 @@ import {
   Outfit_700Bold
 } from '@expo-google-fonts/outfit';
 
-const BASE_URL = 'http://192.168.176.253:5000';
+const BASE_URL = 'https://knholdingsbackend.onrender.com';
 
 const ManageMembers = () => {
   const [members, setMembers] = useState([]);

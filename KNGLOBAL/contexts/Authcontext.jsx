@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
 
-  const API_URL = 'http://192.168.176.253:5000';
+  const API_URL = 'https://knholdingsbackend.onrender.com';
 
   // Load token from storage on app start
   useEffect(() => {
