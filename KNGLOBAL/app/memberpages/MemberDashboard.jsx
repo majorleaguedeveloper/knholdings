@@ -94,10 +94,10 @@ const MemberDashboard = () => {
       };
       
       const [profileRes, sharesRes, announcementsRes, monthlySharesRes] = await Promise.all([
-        axios.get('http://192.168.220.159:5000/api/member/profile', config),
-        axios.get('http://192.168.220.159:5000/api/member/shares', config),
-        axios.get('http://192.168.220.159:5000/api/member/announcements', config),
-        axios.get('http://192.168.220.159:5000/api/member/shares/monthly', config)
+        axios.get('http://192.168.176.253:5000/api/member/profile', config),
+        axios.get('http://192.168.176.253:5000/api/member/shares', config),
+        axios.get('http://192.168.176.253:5000/api/member/announcements', config),
+        axios.get('http://192.168.176.253:5000/api/member/shares/monthly', config)
       ]);
 
       const newData = {
@@ -469,7 +469,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f5f7fa',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   scrollView: {
     flex: 1,
@@ -532,12 +531,12 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     marginBottom: 16,
     flexWrap: 'wrap',
   },
   statCard: {
-    width: SCREEN_WIDTH / 3.5,
+    width: SCREEN_WIDTH / 2.5,
     backgroundColor: '#ffffff',
     padding: 12,
     borderRadius: 16,
@@ -548,6 +547,7 @@ const styles = StyleSheet.create({
     elevation: 3,
     alignItems: 'center',
     marginHorizontal: 4,
+    marginBottom: 8
   },
   statIconContainer: {
     width: 44,
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 200,
   },
   actionButton: {
     flex: 1,

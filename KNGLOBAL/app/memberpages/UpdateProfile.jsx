@@ -73,7 +73,7 @@ const UpdateProfile = () => {
         },
       };
       
-      const response = await axios.get('http://192.168.220.159:5000/api/member/profile', config);
+      const response = await axios.get('http://192.168.176.253:5000/api/member/profile', config);
       
       if (response.data.success) {
         const { name, phone } = response.data.data;
@@ -143,7 +143,7 @@ const UpdateProfile = () => {
       };
       
       const response = await axios.put(
-        'http://192.168.220.159:5000/api/member/profile',
+        'http://192.168.176.253:5000/api/member/profile',
         formData,
         config
       );
@@ -193,14 +193,8 @@ const UpdateProfile = () => {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.headerSection}>
-            <TouchableOpacity 
-              style={styles.backButton} 
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#374151" />
-            </TouchableOpacity>
             <View style={styles.profileIconContainer}>
-              <FontAwesome name="user-circle" size={80} color="#5046e5" />
+              <FontAwesome name="user-circle" size={80} color="#3498db" />
             </View>
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Update Profile</Text>
@@ -312,15 +306,6 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     position: 'relative',
   },
-  backButton: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#f3f4f6',
-    zIndex: 10,
-  },
   profileIconContainer: {
     marginBottom: 15,
     alignItems: 'center',
@@ -392,7 +377,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   updateButton: {
-    backgroundColor: '#5046e5',
+    backgroundColor: '#3498db',
     paddingVertical: 14,
     paddingHorizontal: 24,
     borderRadius: 10,

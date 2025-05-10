@@ -108,6 +108,7 @@ const RegisterScreen = () => {
       await AsyncStorage.removeItem('registerEmail');
       await AsyncStorage.removeItem('registerPhone');
       
+      
       Alert.alert(
         'Registration Successful',
         'Your account has been created and is pending admin approval.',

@@ -13,7 +13,7 @@ const sharesRoutes = require('./routes/shares');
 // Load environment variables
 dotenv.config();
 
-// Initialize express app
+// Initialize express app 
 const app = express(); 
 
 // Middleware

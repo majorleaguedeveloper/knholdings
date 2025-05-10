@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
 
-  const API_URL = 'http://192.168.220.159:5000';
+  const API_URL = 'http://192.168.176.253:5000';
 
   // Load token from storage on app start
   useEffect(() => {
@@ -111,7 +111,6 @@ export const AuthProvider = ({ children }) => {
       
       setUserToken(null);
       setUserData(null);
-      router.push('/auth/login');
     } catch (error) {
       console.log('Error logging out:', error);
     } finally {

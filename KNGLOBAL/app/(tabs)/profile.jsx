@@ -7,8 +7,7 @@ import {
   StyleSheet, 
   ScrollView,
   SafeAreaView,
-  ActivityIndicator,
-  Image
+  ActivityIndicator
 } from 'react-native';
 import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
@@ -47,10 +46,20 @@ const Profile = () => {
 
   const handleLogout = async () => {
     try {
+      // First remove the data
       await AsyncStorage.removeItem('userData');
+      await AsyncStorage.removeItem('userToken');
+      
+      // Then call logout which should NOT handle navigation
       await logout();
-      Alert.alert('Logged Out', 'You have been logged out successfully.');
-      router.push('/auth/login');
+      
+      // Only navigate after all async operations are complete
+      Alert.alert('Logged Out', 'You have been logged out successfully.', [
+        { 
+          text: 'OK', 
+          onPress: () => router.replace('/auth/login')
+        }
+      ]);
     } catch (error) {
       Alert.alert('Error', 'Failed to log out. Please try again.');
     }
@@ -173,7 +182,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#4A55A2',
+    backgroundColor: '#3498db',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -240,7 +249,7 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     flexDirection: 'row',
-    backgroundColor: '#F24968',
+    backgroundColor: '#3498db',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,

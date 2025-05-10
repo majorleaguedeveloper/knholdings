@@ -1,14 +1,19 @@
-import React, { useEffect, useContext } from 'react';
+import React, { useEffect, useContext, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, Platform, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AuthContext from '../contexts/Authcontext'; // Adjust the path if necessary
+import * as SplashScreen from 'expo-splash-screen';
+
+// Prevent auto-hiding of splash screen
+SplashScreen.preventAutoHideAsync();
 
 const Index = () => {
   const router = useRouter();
   const { isAuthenticated, userData } = useContext(AuthContext);
+  const [appIsReady, setAppIsReady] = useState(false);
 
   // Load custom fonts
   const [fontsLoaded] = useFonts({
@@ -18,29 +23,51 @@ const Index = () => {
     Outfit_700Bold,
   });
 
+  useEffect(() => {
+    async function prepare() {
+      try {
+        // Pre-load fonts, make API calls, etc.
+        // Wait for fonts to load
+        await new Promise(resolve => {
+          if (fontsLoaded) {
+            resolve();
+          }
+        });
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        // Tell the application to render
+        setAppIsReady(true);
+      }
+    }
+
+    prepare();
+  }, [fontsLoaded]);
+
+  useEffect(() => {
+    // Hide splash screen once app is ready
+    if (appIsReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [appIsReady]);
+
   // Check authentication status and redirect if needed
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
-      if (isAuthenticated() && userData) {
+      if (isAuthenticated && typeof isAuthenticated === 'function' && isAuthenticated() && userData) {
         // Redirect based on user role
-        if (userData.role === 'admin') {
-          router.replace('/adminpages/AdminDashboard');
-        } else {
-          router.replace('/memberpages/MemberDashboard');
-        }
+        router.replace('/(tabs)/dashboard');
       }
     };
     
-    checkAuthAndRedirect();
-  }, [isAuthenticated, userData]);
+    if (appIsReady) {
+      checkAuthAndRedirect();
+    }
+  }, [appIsReady, isAuthenticated, userData]);
 
   // Show loading screen while fonts are loading
-  if (!fontsLoaded) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading...</Text>
-      </View>
-    );
+  if (!appIsReady) {
+    return null; // This return null is important - we don't want to render anything while splash screen is visible
   }
 
   return (
@@ -58,8 +85,8 @@ const Index = () => {
       <View style={styles.contentContainer}>
         <Text style={styles.title}>KN Holdings</Text>
         <Text style={styles.subtitle}>Your trusted partner in financial growth</Text>
-        
-        </View>
+      </View>
+
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
           style={styles.loginButton} 
@@ -108,8 +135,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 120,
-    height: 120,
+    width: 300,
+    height: 300,
+    borderRadius: 40
   },
   contentContainer: {
     paddingHorizontal: 24,
@@ -128,48 +156,6 @@ const styles = StyleSheet.create({
     color: '#4a4a68',
     textAlign: 'center',
     marginBottom: 40,
-  },
-  featureContainer: {
-    width: '100%',
-    marginVertical: 20,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 12,
-    paddingVertical: 16,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  featureTitle: {
-    fontFamily: 'Outfit_600SemiBold',
-    fontSize: 16,
-    color: '#1a1a2e',
-    flex: 1,
-  },
-  featureText: {
-    fontFamily: 'Outfit_400Regular',
-    fontSize: 14,
-    color: '#4a4a68',
-    flex: 2,
   },
   buttonContainer: {
     paddingHorizontal: 24,

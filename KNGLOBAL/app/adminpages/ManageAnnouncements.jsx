@@ -87,7 +87,7 @@ const ManageAnnouncements = () => {
         return;
       }
       
-      const response = await axios.get('http://192.168.220.159:5000/api/admin/announcements', {
+      const response = await axios.get('http://192.168.176.253:5000/api/admin/announcements', {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -148,7 +148,7 @@ const ManageAnnouncements = () => {
       const token = await AsyncStorage.getItem('userToken');
       
       const response = await axios.post(
-        'http://192.168.220.159:5000/api/admin/announcements',
+        'http://192.168.176.253:5000/api/admin/announcements',
         newAnnouncement,
         {
           headers: {
@@ -221,6 +221,9 @@ const ManageAnnouncements = () => {
       >
         <View style={styles.header}>
           <Text style={styles.title}>Manage Announcements</Text>
+          
+        </View>
+        <View>
           <TouchableOpacity 
             style={styles.toggleFormButton}
             onPress={() => setIsFormVisible(!isFormVisible)}
@@ -231,7 +234,7 @@ const ManageAnnouncements = () => {
               color={COLORS.card} 
             />
             <Text style={styles.toggleFormButtonText}>
-              {isFormVisible ? "Hide Form" : "New Announcement"}
+              {isFormVisible ? "Hide Form" : "Add New Announcement"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -410,6 +413,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
+    marginHorizontal: 15,
+    justifyContent: 'center'
   },
   toggleFormButtonText: {
     fontFamily: 'Outfit_600SemiBold',

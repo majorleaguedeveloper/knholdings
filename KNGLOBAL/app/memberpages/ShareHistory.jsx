@@ -56,8 +56,8 @@ const ShareHistory = () => {
       };
       
       const [sharesRes, monthlySharesRes] = await Promise.all([
-        axios.get('http://192.168.220.159:5000/api/member/shares', config),
-        axios.get('http://192.168.220.159:5000/api/member/shares/monthly', config)
+        axios.get('http://192.168.176.253:5000/api/member/shares', config),
+        axios.get('http://192.168.176.253:5000/api/member/shares/monthly', config)
       ]);
 
       setShareData({

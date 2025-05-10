@@ -25,8 +25,9 @@ import {
 } from '@expo/vector-icons';
 import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { StatusBar } from 'expo-status-bar';
+import { router } from 'expo-router';
 
-const API_BASE_URL = 'http://192.168.220.159:5000/api';
+const API_BASE_URL = 'http://192.168.176.253:5000/api';
 
 const ManageShares = () => {
   // Load fonts
@@ -146,6 +147,7 @@ const ManageShares = () => {
       setNewShare({ user: '', amountPaid: '', quantity: '', paymentMethod: 'paypal', notes: '' });
       setSelectedUser(null);
       fetchShares();
+      router.replace('/(tabs)/dashboard')
     } catch (error) {
       console.error('Error creating share purchase:', error);
       const errorMessage = error.response?.data?.message || 'Failed to create share purchase';

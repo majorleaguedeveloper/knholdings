@@ -241,8 +241,8 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    width: width * 0.4,
-    height: 80,
+    width: 200,
+    height: 200,
   },
   formContainer: {
     backgroundColor: '#FFFFFF',
