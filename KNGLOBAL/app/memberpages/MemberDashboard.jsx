@@ -10,7 +10,8 @@ import {
   SafeAreaView,
   Platform,
   StatusBar,
-  Dimensions
+  Dimensions,
+  ImageBackground
 } from 'react-native';
 import AuthContext from '../../contexts/Authcontext';
 import axios from 'axios';
@@ -31,10 +32,9 @@ import {
   MaterialCommunityIcons,
   Feather
 } from '@expo/vector-icons';
-import { LineChart } from 'react-native-chart-kit';
 
 // Get screen dimensions for responsive sizing
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MemberDashboard = () => {
   const { userToken } = useContext(AuthContext);
@@ -103,7 +103,7 @@ const MemberDashboard = () => {
       const newData = {
         profile: profileRes.data.data,
         totalShares: sharesRes.data.totalShares,
-        sharesList: sharesRes.data.data.slice(0, 5),
+        sharesList: sharesRes.data.data.slice(0, 3),
         announcements: announcementsRes.data.data.slice(0, 3),
         monthlyShares: monthlySharesRes.data.data.slice(0, 6)
       };
@@ -137,42 +137,38 @@ const MemberDashboard = () => {
     fetchDashboardData();
   }, []);
 
-  // Format data for line chart
-  const formatChartData = () => {
-    if (!dashboardData.monthlyShares || dashboardData.monthlyShares.length === 0) {
-      return {
-        labels: ['No Data'],
-        datasets: [{ data: [0] }]
-      };
-    }
-
-    // Sort monthly shares by date
-    const sortedData = [...dashboardData.monthlyShares].sort((a, b) => {
-      const getMonthNumber = (month) => {
-        const months = ["January", "February", "March", "April", "May", "June", 
-                        "July", "August", "September", "October", "November", "December"];
-        return months.indexOf(month);
-      };
-      return getMonthNumber(a.month) - getMonthNumber(b.month);
-    });
-
-    return {
-      labels: sortedData.map(item => item.month.substring(0, 3)),
-      datasets: [{
-        data: sortedData.map(item => item.totalShares),
-        color: (opacity = 1) => `rgba(52, 152, 219, ${opacity})`,
-        strokeWidth: 2
-      }]
-    };
+  // Format currency amounts
+  const formatCurrency = (amount) => {
+    return `$${parseFloat(amount).toFixed(2)}`;
   };
 
-  // Format data for summary stats
+  // Format dates
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  // Format month and year for monthly summary
+  const formatMonthYear = (monthStr) => {
+    if (!monthStr) return 'Unknown';
+    
+    const [year, month] = monthStr.split('-');
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    return `${monthNames[parseInt(month) - 1]} ${year}`;
+  };
+
+  // Calculate investment stats and growth
   const getStatsData = () => {
     if (!dashboardData.monthlyShares || dashboardData.monthlyShares.length === 0) {
       return { 
         totalMonthlyAmount: 0,
         averageShares: 0,
-        growthPercentage: 0
+        growthPercentage: 0,
+        monthlyData: []
       };
     }
     
@@ -183,12 +179,7 @@ const MemberDashboard = () => {
     let growthPercentage = 0;
     if (dashboardData.monthlyShares.length >= 2) {
       const sortedData = [...dashboardData.monthlyShares].sort((a, b) => {
-        const getMonthNumber = (month) => {
-          const months = ["January", "February", "March", "April", "May", "June", 
-                          "July", "August", "September", "October", "November", "December"];
-          return months.indexOf(month);
-        };
-        return getMonthNumber(a.month) - getMonthNumber(b.month);
+        return new Date(a.month) - new Date(b.month);
       });
       
       const oldest = sortedData[0].totalShares;
@@ -202,264 +193,281 @@ const MemberDashboard = () => {
     return {
       totalMonthlyAmount: totalAmount,
       averageShares: averageShares,
-      growthPercentage: growthPercentage
+      growthPercentage: growthPercentage,
+      monthlyData: dashboardData.monthlyShares
     };
   };
 
   if (!fontsLoaded) {
-    return <ActivityIndicator size="large" color="#3498db" />;
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4f46e5" />
+        <Text style={[styles.loadingText, {fontFamily: 'System'}]}>Loading fonts...</Text>
+      </View>
+    );
   }
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3498db" />
+        <ActivityIndicator size="large" color="#4f46e5" />
         <Text style={styles.loadingText}>Loading Member Dashboard...</Text>
       </View>
     );
   }
 
   const statsData = getStatsData();
-  const chartData = formatChartData();
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView 
         style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4f46e5"]} />
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header with gradient background */}
         <View style={styles.header}>
-          <View style={styles.profileOverview}>
-            <View style={styles.profileIcon}>
-              <FontAwesome name="user" size={30} color="#ffffff" />
-            </View>
-            <View style={styles.profileText}>
-              <Text style={styles.welcomeText} numberOfLines={1}>
-                Welcome, {dashboardData.profile?.name}
-              </Text>
-              <Text style={styles.memberSince}>
-                Member Since: {new Date(dashboardData.profile?.createdAt).toLocaleDateString()}
-              </Text>
+          <View style={styles.headerOverlay}>
+            <View style={styles.profileSection}>
+              <View style={styles.profileIcon}>
+                <FontAwesome name="user" size={28} color="#ffffff" />
+              </View>
+              <View style={styles.profileInfo}>
+                <Text style={styles.welcomeText} numberOfLines={1}>
+                  Welcome, {dashboardData.profile?.name}
+                </Text>
+                <Text style={styles.memberSince}>
+                  <FontAwesome5 name="calendar-check" size={12} color="#eff6ff" style={styles.smallIcon} />
+                  <Text> Member Since: {new Date(dashboardData.profile?.createdAt).toLocaleDateString()}</Text>
+                </Text>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* Content Container */}
-        <View style={styles.contentContainer}>
-          {/* Stats Summary */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statCard}>
-              <View style={[styles.statIconContainer, styles.sharesIconBg]}>
-                <Ionicons name="share-social" size={22} color="#3498db" />
-              </View>
-              <Text style={styles.statValue}>{dashboardData.totalShares}</Text>
-              <Text style={styles.statLabel}>Total Shares</Text>
+        {/* Quick Stats Cards */}
+        <View style={styles.quickStatsContainer}>
+          <View style={styles.statsCard}>
+            <View style={[styles.statsIconContainer, styles.sharesIconBg]}>
+              <MaterialCommunityIcons name="chart-pie" size={22} color="#4f46e5" />
             </View>
-            
-            <View style={styles.statCard}>
-              <View style={[styles.statIconContainer, styles.investmentIconBg]}>
-                <FontAwesome name="dollar" size={22} color="#2ecc71" />
-              </View>
-              <Text style={styles.statValue}>
-                ${dashboardData.monthlyShares[0]?.totalAmount?.toFixed(2) || '0.00'}
-              </Text>
-              <Text style={styles.statLabel}>Recent Investment</Text>
-            </View>
-            
-            <View style={styles.statCard}>
-              <View style={[styles.statIconContainer, styles.alertsIconBg]}>
-                <Ionicons name="notifications" size={22} color="#e74c3c" />
-              </View>
-              <Text style={styles.statValue}>
-                {dashboardData.announcements.length}
-              </Text>
-              <Text style={styles.statLabel}>New Alerts</Text>
+            <View style={styles.statsTextContainer}>
+              <Text style={styles.statsValue}>{dashboardData.totalShares}</Text>
+              <Text style={styles.statsLabel}>Total Shares</Text>
             </View>
           </View>
-
-          {/* Shares Summary */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Feather name="trending-up" size={20} color="#3498db" />
-              <Text style={styles.sectionTitle}>Your Shares</Text>
+          
+          <View style={styles.statsCard}>
+            <View style={[styles.statsIconContainer, styles.growthIconBg]}>
+              <Feather name="trending-up" size={22} color="#10b981" />
             </View>
-            
-            {dashboardData.sharesList.length > 0 ? (
-              dashboardData.sharesList.map((share, index) => (
-                <View 
-                  key={index} 
-                  style={[
-                    styles.shareItem, 
-                    index === dashboardData.sharesList.length - 1 ? styles.noBorder : null
-                  ]}
-                >
-                  <View style={styles.shareItemLeft}>
-                    <Text style={styles.shareDate}>
-                      {new Date(share.purchaseDate).toLocaleDateString()}
-                    </Text>
-                    <Text style={styles.shareQuantity}>
-                      {share.quantity} shares
-                    </Text>
-                  </View>
-                  <Text style={styles.sharePrice}>
-                    ${share.pricePerShare} per share
-                  </Text>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.emptyText}>No recent share purchases</Text>
-            )}
-            
+            <View style={styles.statsTextContainer}>
+              <Text style={styles.statsValue}>
+                {statsData.growthPercentage >= 0 ? '+' : ''}{statsData.growthPercentage.toFixed(1)}%
+              </Text>
+              <Text style={styles.statsLabel}>Growth</Text>
+            </View>
+          </View>
+          
+          <View style={styles.statsCard}>
+            <View style={[styles.statsIconContainer, styles.alertIconBg]}>
+              <Ionicons name="notifications" size={22} color="#f59e0b" />
+            </View>
+            <View style={styles.statsTextContainer}>
+              <Text style={styles.statsValue}>{dashboardData.announcements.length}</Text>
+              <Text style={styles.statsLabel}>Alerts</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Monthly Summary Section - Inspired by ShareHistory */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="calendar-month-outline" size={20} color="#4f46e5" />
+            <Text style={styles.sectionTitle}>Monthly Summary</Text>
             <TouchableOpacity 
-              style={styles.viewMoreButton} 
+              style={styles.viewAllButton}
               onPress={() => router.push('/memberpages/ShareHistory')}
             >
-              <Text style={styles.viewMoreText}>View All Shares</Text>
-              <Ionicons name="chevron-forward" size={16} color="#3498db" />
+              <Text style={styles.viewAllText}>View All</Text>
+              <Ionicons name="chevron-forward" size={14} color="#4f46e5" />
             </TouchableOpacity>
           </View>
 
-          {/* Monthly Share Summary with Line Chart */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <FontAwesome5 name="calendar-alt" size={20} color="#3498db" />
-              <Text style={styles.sectionTitle}>Monthly Summary</Text>
-            </View>
-            
-            {dashboardData.monthlyShares.length > 0 ? (
-              <>
-                {/* Chart */}
-                <View style={styles.chartContainer}>
-                  <LineChart
-                    data={chartData}
-                    width={SCREEN_WIDTH - 64}
-                    height={180}
-                    yAxisLabel=""
-                    yAxisSuffix=""
-                    chartConfig={{
-                      backgroundColor: '#ffffff',
-                      backgroundGradientFrom: '#ffffff',
-                      backgroundGradientTo: '#ffffff',
-                      decimalPlaces: 0,
-                      color: (opacity = 1) => `rgba(52, 152, 219, ${opacity})`,
-                      labelColor: (opacity = 1) => `rgba(127, 140, 141, ${opacity})`,
-                      style: {
-                        borderRadius: 16
-                      },
-                      propsForDots: {
-                        r: '6',
-                        strokeWidth: '2',
-                        stroke: '#3498db'
-                      }
-                    }}
-                    bezier
-                    style={styles.chart}
-                  />
-                </View>
-
-                {/* Summary Statistics */}
-                <View style={styles.monthlySummaryStats}>
-                  <View style={styles.summaryStatItem}>
-                    <Text style={styles.summaryStatValue}>
-                      ${statsData.totalMonthlyAmount.toFixed(2)}
-                    </Text>
-                    <Text style={styles.summaryStatLabel}>Total Investment</Text>
-                  </View>
-                  
-                  <View style={styles.summaryStatItem}>
-                    <Text style={styles.summaryStatValue}>
-                      {statsData.averageShares.toFixed(1)}
-                    </Text>
-                    <Text style={styles.summaryStatLabel}>Avg. Monthly Shares</Text>
-                  </View>
-                  
-                  <View style={styles.summaryStatItem}>
-                    <View style={styles.growthContainer}>
-                      <Text style={[
-                        styles.summaryStatValue,
-                        statsData.growthPercentage >= 0 ? styles.positiveGrowth : styles.negativeGrowth
-                      ]}>
-                        {statsData.growthPercentage.toFixed(1)}%
-                      </Text>
-                      {statsData.growthPercentage >= 0 ? (
-                        <Feather name="trending-up" size={16} color="#2ecc71" style={styles.growthIcon} />
-                      ) : (
-                        <Feather name="trending-down" size={16} color="#e74c3c" style={styles.growthIcon} />
-                      )}
+          {dashboardData.monthlyShares.length > 0 ? (
+            <ScrollView 
+              horizontal={true} 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.monthlyCardsContainer}
+            >
+              {dashboardData.monthlyShares.map((item, index) => (
+                <View key={index} style={styles.monthlyCard}>
+                  <View style={styles.monthlyHeader}>
+                    <View style={styles.monthlyTitleContainer}>
+                      <MaterialCommunityIcons name="calendar-month-outline" size={18} color="#4f46e5" />
+                      <Text style={styles.monthlyTitle}>{formatMonthYear(item.month)}</Text>
                     </View>
-                    <Text style={styles.summaryStatLabel}>Period Growth</Text>
+                    <View style={styles.monthlySharesContainer}>
+                      <MaterialCommunityIcons name="chart-timeline-variant" size={16} color="#4f46e5" />
+                      <Text style={styles.monthlyShares}>{item.totalShares} {item.totalShares === 1 ? 'share' : 'shares'}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.monthlyInvestment}>
+                    <Text style={styles.investmentLabel}>Total Investment:</Text>
+                    <Text style={styles.investmentValue}>{formatCurrency(item.totalAmount)}</Text>
+                  </View>
+                  
+                  {/* Mini Purchase History */}
+                  <View style={styles.purchaseHistory}>
+                    <Text style={styles.purchaseHistoryTitle}>Purchases</Text>
+                    {item.purchases.slice(0, 2).map((purchase, idx) => (
+                      <View key={idx} style={styles.purchaseItem}>
+                        <Text style={styles.purchaseDate}>{new Date(purchase.purchaseDate).toLocaleDateString()}</Text>
+                        <View style={styles.purchaseDetails}>
+                          <Text style={styles.purchaseQty}>{purchase.quantity}</Text>
+                          <Text style={styles.purchasePrice}>{formatCurrency(purchase.totalAmount)}</Text>
+                        </View>
+                      </View>
+                    ))}
+                    {item.purchases.length > 2 && (
+                      <Text style={styles.morePurchases}>+ {item.purchases.length - 2} more</Text>
+                    )}
                   </View>
                 </View>
-              </>
-            ) : (
-              <Text style={styles.emptyText}>No monthly data available</Text>
-            )}
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={styles.emptyStateContainer}>
+              <MaterialCommunityIcons name="calendar-alert" size={36} color="#9ca3af" />
+              <Text style={styles.emptyStateText}>No monthly data available</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Recent Share Purchases */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Feather name="trending-up" size={20} color="#4f46e5" />
+            <Text style={styles.sectionTitle}>Recent Purchases</Text>
+            <TouchableOpacity 
+              style={styles.viewAllButton}
+              onPress={() => router.push('/memberpages/ShareHistory')}
+            >
+              <Text style={styles.viewAllText}>View All</Text>
+              <Ionicons name="chevron-forward" size={14} color="#4f46e5" />
+            </TouchableOpacity>
           </View>
 
-          {/* Announcements */}
-          <View style={styles.sectionCard}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="notifications" size={20} color="#3498db" />
-              <Text style={styles.sectionTitle}>Announcements</Text>
+          {dashboardData.sharesList.length > 0 ? (
+            dashboardData.sharesList.map((share, index) => (
+              <View key={index} style={styles.shareItem}>
+                <View style={styles.shareHeader}>
+                  <View style={styles.shareDateContainer}>
+                    <MaterialCommunityIcons name="calendar-month" size={16} color="#4f46e5" style={styles.icon} />
+                    <Text style={styles.shareDate}>{formatDate(share.purchaseDate)}</Text>
+                  </View>
+                  <View style={styles.shareQtyPrice}>
+                    <Text style={styles.shareQuantity}>
+                      {share.quantity} {share.quantity === 1 ? 'share' : 'shares'}
+                    </Text>
+                    <Text style={styles.sharePrice}>@ {formatCurrency(share.pricePerShare)}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.shareDetails}>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>
+                      <FontAwesome5 name="money-bill-wave" size={12} color="#6b7280" /> Total Amount:
+                    </Text>
+                    <Text style={styles.detailValue}>{formatCurrency(share.totalAmount)}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>
+                      <FontAwesome5 name="credit-card" size={12} color="#6b7280" /> Payment Method:
+                    </Text>
+                    <Text style={styles.detailValue}>{share.paymentMethod.charAt(0).toUpperCase() + share.paymentMethod.slice(1)}</Text>
+                  </View>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyStateContainer}>
+              <MaterialCommunityIcons name="chart-line-variant" size={36} color="#9ca3af" />
+              <Text style={styles.emptyStateText}>No recent share purchases</Text>
             </View>
-            
-            {dashboardData.announcements.length > 0 ? (
-              dashboardData.announcements.map((announcement, index) => (
-                <View 
-                  key={index} 
-                  style={[
-                    styles.announcementItem, 
-                    index === dashboardData.announcements.length - 1 ? styles.noBorder : null
-                  ]}
-                >
+          )}
+        </View>
+
+        {/* Announcements */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="notifications" size={20} color="#4f46e5" />
+            <Text style={styles.sectionTitle}>Announcements</Text>
+            <TouchableOpacity 
+              style={styles.viewAllButton}
+              onPress={() => router.push('/memberpages/AllAnnouncements')}
+            >
+              <Text style={styles.viewAllText}>View All</Text>
+              <Ionicons name="chevron-forward" size={14} color="#4f46e5" />
+            </TouchableOpacity>
+          </View>
+
+          {dashboardData.announcements.length > 0 ? (
+            dashboardData.announcements.map((announcement, index) => (
+              <View key={index} style={styles.announcementItem}>
+                <View style={styles.announcementHeader}>
+                  <View style={styles.announcementBadge}>
+                    <MaterialCommunityIcons name="bell-ring" size={14} color="#ffffff" />
+                  </View>
                   <Text style={styles.announcementTitle}>{announcement.title}</Text>
-                  <Text style={styles.announcementContent} numberOfLines={2}>
-                    {announcement.content}
-                  </Text>
-                  <View style={styles.announcementMeta}>
-                    <Feather name="clock" size={14} color="#7f8c8d" />
+                </View>
+                <Text style={styles.announcementContent} numberOfLines={2}>
+                  {announcement.content}
+                </Text>
+                <View style={styles.announcementFooter}>
+                  <View style={styles.dateContainer}>
+                    <Feather name="clock" size={12} color="#6b7280" />
                     <Text style={styles.announcementDate}>
                       {new Date(announcement.createdAt).toLocaleDateString()}
                     </Text>
                   </View>
                 </View>
-              ))
-            ) : (
-              <Text style={styles.emptyText}>No announcements available</Text>
-            )}
-            
-            <TouchableOpacity 
-              style={styles.viewMoreButton} 
-              onPress={() => router.push('/memberpages/AllAnnouncements')}
-            >
-              <Text style={styles.viewMoreText}>View All Announcements</Text>
-              <Ionicons name="chevron-forward" size={16} color="#3498db" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Action Buttons */}
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => router.push('/memberpages/UpdateProfile')}
-            >
-              <FontAwesome name="edit" size={18} color="#ffffff" />
-              <Text style={styles.actionButtonText}>Update Profile</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.actionButtonSecondary]}
-              onPress={() => router.push('/memberpages/ShareHistory')}
-            >
-              <Ionicons name="document-text" size={18} color="#ffffff" />
-              <Text style={styles.actionButtonText}>Share History</Text>
-            </TouchableOpacity>
-          </View>
+              </View>
+            ))
+          ) : (
+            <View style={styles.emptyStateContainer}>
+              <MaterialCommunityIcons name="bell-off" size={36} color="#9ca3af" />
+              <Text style={styles.emptyStateText}>No announcements available</Text>
+            </View>
+          )}
         </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/memberpages/UpdateProfile')}
+          >
+            <FontAwesome name="user-circle" size={20} color="#ffffff" />
+            <Text style={styles.actionButtonText}>Update Profile</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.secondaryButton]}
+            onPress={() => router.push('/memberpages/ShareHistory')}
+          >
+            <MaterialCommunityIcons name="file-document-outline" size={20} color="#ffffff" />
+            <Text style={styles.actionButtonText}>Share History</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Extra padding at bottom to prevent content being hidden by tab bar */}
+        <View style={styles.bottomSpacer} />
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -469,12 +477,13 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f5f7fa',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   scrollView: {
     flex: 1,
   },
-  contentContainer: {
-    paddingBottom: 16,
+  scrollViewContent: {
+    paddingBottom: 0, // Extra padding to account for tab bar
   },
   loadingContainer: {
     flex: 1,
@@ -483,111 +492,125 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f7fa',
   },
   loadingText: {
-    marginTop: 10,
-    fontFamily: 'OutfitMedium',
-    color: '#7f8c8d',
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6b7280',
+    fontFamily: 'OutfitRegular',
   },
+  // Header Styles
   header: {
+    display: 'flex',
+    alignItems: 'center',
     backgroundColor: '#3498db',
-    padding: 20,
+    overflow: 'hidden',
+    height: 120,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
   },
-  profileOverview: {
+  headerOverlay: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'flex-end',
+  },
+  profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingBottom: 35
   },
   profileIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: 14,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
-  profileText: {
+  profileInfo: {
     flex: 1,
   },
   welcomeText: {
     fontFamily: 'OutfitBold',
     fontSize: 22,
     color: '#ffffff',
+    marginBottom: 4,
   },
   memberSince: {
     fontFamily: 'OutfitRegular',
     fontSize: 14,
-    color: '#ecf0f1',
-    marginTop: 4,
+    color: '#eff6ff',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  statsContainer: {
+  smallIcon: {
+    marginRight: 4,
+  },
+  
+  // Quick Stats Cards
+  quickStatsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 10,
+    paddingHorizontal: 16,
+    marginTop: -35,
     marginBottom: 16,
-    flexWrap: 'wrap',
   },
-  statCard: {
-    width: SCREEN_WIDTH / 2.5,
+  statsCard: {
+    width: SCREEN_WIDTH / 3.5,
     backgroundColor: '#ffffff',
+    borderRadius: 12,
     padding: 12,
-    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
     alignItems: 'center',
-    marginHorizontal: 4,
-    marginBottom: 8
   },
-  statIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  statsIconContainer: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   sharesIconBg: {
-    backgroundColor: 'rgba(52, 152, 219, 0.15)',
+    backgroundColor: '#eff6ff',
   },
-  investmentIconBg: {
-    backgroundColor: 'rgba(46, 204, 113, 0.15)',
+  growthIconBg: {
+    backgroundColor: '#ecfdf5',
   },
-  alertsIconBg: {
-    backgroundColor: 'rgba(231, 76, 60, 0.15)',
+  alertIconBg: {
+    backgroundColor: '#fef3c7',
   },
-  statValue: {
+  statsTextContainer: {
+    alignItems: 'center',
+  },
+  statsValue: {
     fontFamily: 'OutfitBold',
     fontSize: 18,
-    color: '#2c3e50',
+    color: '#111827',
   },
-  statLabel: {
+  statsLabel: {
     fontFamily: 'OutfitRegular',
-    fontSize: 11,
-    color: '#7f8c8d',
-    marginTop: 4,
-    textAlign: 'center',
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
   },
-  sectionCard: {
+  
+  // Section Containers
+  sectionContainer: {
     backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
     marginHorizontal: 16,
     marginBottom: 16,
+    borderRadius: 16,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
     elevation: 3,
   },
   sectionHeader: {
@@ -598,142 +621,276 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'OutfitSemiBold',
     fontSize: 18,
-    color: '#2c3e50',
+    color: '#111827',
     marginLeft: 8,
-  },
-  shareItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ecf0f1',
-  },
-  noBorder: {
-    borderBottomWidth: 0,
-  },
-  shareItemLeft: {
     flex: 1,
   },
-  shareDate: {
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewAllText: {
     fontFamily: 'OutfitMedium',
     fontSize: 14,
-    color: '#2c3e50',
+    color: '#4f46e5',
+    marginRight: 2,
   },
-  shareQuantity: {
-    fontFamily: 'OutfitRegular',
-    fontSize: 13,
-    color: '#7f8c8d',
-    marginTop: 4,
+  
+  // Monthly Summary Cards
+  monthlyCardsContainer: {
+    paddingRight: 8,
+    paddingBottom: 8,
   },
-  sharePrice: {
+  monthlyCard: {
+    width: SCREEN_WIDTH * 0.7,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 14,
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  monthlyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  monthlyTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  monthlyTitle: {
     fontFamily: 'OutfitSemiBold',
-    fontSize: 14,
-    color: '#16a085',
-  },
-  viewMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-    borderRadius: 8,
-  },
-  viewMoreText: {
-    fontFamily: 'OutfitMedium',
-    fontSize: 14,
-    color: '#3498db',
-    marginRight: 4,
-  },
-  emptyText: {
-    fontFamily: 'OutfitRegular',
-    fontSize: 14,
-    color: '#7f8c8d',
-    textAlign: 'center',
-    paddingVertical: 16,
-  },
-  chartContainer: {
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  chart: {
-    borderRadius: 8,
-    marginVertical: 8,
-  },
-  monthlySummaryStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#ecf0f1',
-  },
-  summaryStatItem: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 8,
-  },
-  summaryStatValue: {
-    fontFamily: 'OutfitBold',
     fontSize: 16,
-    color: '#2c3e50',
+    color: '#111827',
+    marginLeft: 6,
   },
-  summaryStatLabel: {
-    fontFamily: 'OutfitRegular',
-    fontSize: 12,
-    color: '#7f8c8d',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  growthContainer: {
+  monthlySharesContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  growthIcon: {
+  monthlyShares: {
+    fontFamily: 'OutfitSemiBold',
+    fontSize: 13,
+    color: '#4f46e5',
     marginLeft: 4,
   },
-  positiveGrowth: {
-    color: '#2ecc71',
+  monthlyInvestment: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#f9fafb',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
   },
-  negativeGrowth: {
-    color: '#e74c3c',
+  investmentLabel: {
+    fontFamily: 'OutfitMedium',
+    fontSize: 14,
+    color: '#4b5563',
   },
-  announcementItem: {
-    paddingVertical: 12,
+  investmentValue: {
+    fontFamily: 'OutfitBold',
+    fontSize: 14,
+    color: '#111827',
+  },
+  purchaseHistory: {
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+    paddingTop: 10,
+  },
+  purchaseHistoryTitle: {
+    fontFamily: 'OutfitMedium',
+    fontSize: 14,
+    color: '#111827',
+    marginBottom: 6,
+  },
+  purchaseItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: '#ecf0f1',
+    borderBottomColor: '#f3f4f6',
+  },
+  purchaseDate: {
+    fontFamily: 'OutfitRegular',
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  purchaseDetails: {
+    flexDirection: 'row',
+  },
+  purchaseQty: {
+    fontFamily: 'OutfitRegular',
+    fontSize: 13,
+    color: '#111827',
+    marginRight: 6,
+    backgroundColor: '#f3f4f6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  purchasePrice: {
+    fontFamily: 'OutfitMedium',
+    fontSize: 13,
+    color: '#111827',
+  },
+  morePurchases: {
+    fontFamily: 'OutfitRegular',
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
+  
+  // Share Items
+  shareItem: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+  },
+  shareHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  shareDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  icon: {
+    marginRight: 4,
+  },
+  shareDate: {
+    fontSize: 14,
+    fontFamily: 'OutfitMedium',
+    color: '#111827',
+  },
+  shareQtyPrice: {
+    alignItems: 'flex-end',
+  },
+  shareQuantity: {
+    fontSize: 14,
+    fontFamily: 'OutfitSemiBold',
+    color: '#111827',
+  },
+  sharePrice: {
+    fontSize: 13,
+    fontFamily: 'OutfitRegular',
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  shareDetails: {},
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+    alignItems: 'center',
+  },
+  detailLabel: {
+    fontSize: 13,
+    fontFamily: 'OutfitRegular',
+    color: '#6b7280',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  detailValue: {
+    fontSize: 13,
+    fontFamily: 'OutfitMedium',
+    color: '#111827',
+  },
+  
+  // Announcement Items
+  announcementItem: {
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#f3f4f6',
+  },
+  announcementHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+ announcementBadge: {
+    backgroundColor: '#4f46e5',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
   announcementTitle: {
     fontFamily: 'OutfitSemiBold',
     fontSize: 16,
-    color: '#2c3e50',
+    color: '#111827',
+    flex: 1,
   },
   announcementContent: {
     fontFamily: 'OutfitRegular',
     fontSize: 14,
-    color: '#7f8c8d',
-    marginTop: 4,
+    color: '#4b5563',
+    marginBottom: 12,
+    lineHeight: 20,
   },
-  announcementMeta: {
+  announcementFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 6,
   },
   announcementDate: {
     fontFamily: 'OutfitRegular',
     fontSize: 12,
-    color: '#7f8c8d',
+    color: '#6b7280',
     marginLeft: 4,
   },
-  actionButtons: {
+  
+  // Empty State
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  emptyStateText: {
+    fontFamily: 'OutfitMedium',
+    fontSize: 14,
+    color: '#9ca3af',
+    marginTop: 8,
+  },
+  
+  // Action Buttons
+  actionButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginBottom: 200,
+    marginHorizontal: 16,
+    marginBottom: 20,
   },
   actionButton: {
-    flex: 1,
     backgroundColor: '#3498db',
     borderRadius: 12,
     paddingVertical: 14,
@@ -741,24 +898,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    width: '48%',
+    shadowColor: '#4f46e5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  actionButtonSecondary: {
-    backgroundColor: '#2c3e50',
-    marginRight: 0,
-    marginLeft: 8,
+  secondaryButton: {
+    backgroundColor: '#3498db',
   },
   actionButtonText: {
-    fontFamily: 'OutfitMedium',
+    fontFamily: 'OutfitSemiBold',
     fontSize: 14,
     color: '#ffffff',
     marginLeft: 8,
   },
+  
+  // Bottom Spacer
+  bottomSpacer: {
+    height: 80,
+  }
 });
 
 export default MemberDashboard;
