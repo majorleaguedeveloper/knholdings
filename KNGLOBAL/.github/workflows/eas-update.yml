@@ -35,4 +35,4 @@ jobs:
         run: npm install
 
       - name: Publish update
-        run: eas update --auto --branch production
+        run: eas update --auto --channel production
