@@ -54,8 +54,7 @@ const Index = () => {
   // Check authentication status and redirect if needed
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
-      if (isAuthenticated && typeof isAuthenticated === 'function' && isAuthenticated() && userData) {
-        // Redirect based on user role
+      if (isAuthenticated() && userData) {
         router.replace('/(tabs)/dashboard');
       }
     };

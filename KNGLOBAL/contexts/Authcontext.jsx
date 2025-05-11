@@ -63,7 +63,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Login user
   const login = async (email, password) => {
     setIsLoading(true);
     setError(null);
@@ -86,14 +85,16 @@ export const AuthProvider = ({ children }) => {
       setUserToken(token);
       setUserData(user);
       
-      return response.data;
       console.log('Login successful:', response.data);
       
+      // Only navigate on successful login
+      router.push('/(tabs)/dashboard');
+      
+      return response.data;
     } catch (error) {
       setError(error.response?.data?.message || 'Login failed');
       throw error;
     } finally {
-      router.push('/(tabs)/dashboard');
       setIsLoading(false);
     }
   };
