@@ -13,25 +13,24 @@ import {
 import AuthContext from '../../contexts/Authcontext';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { MaterialIcons, Ionicons, FontAwesome } from '@expo/vector-icons';
 import * as SplashScreen from 'expo-splash-screen';
+import { API_BASE_URL } from '../apiConfig';
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
 
-const CACHED_ANNOUNCEMENTS_KEY = 'cached_announcements';
-const API_URL = 'https://knholdingsbackend.onrender.com/api/member/announcements';
+const API_URL = `${API_BASE_URL}/member/announcements`;
 
 const AllAnnouncements = () => {
   const { userToken } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const router = useRouter();
 
-  // Load fonts
   const [fontsLoaded] = useFonts({
     Outfit_400Regular,
     Outfit_500Medium,
@@ -39,45 +38,24 @@ const AllAnnouncements = () => {
     Outfit_700Bold
   });
 
-  // Function to cache announcements
-  const cacheAnnouncements = async (data) => {
-    try {
-      await AsyncStorage.setItem(CACHED_ANNOUNCEMENTS_KEY, JSON.stringify(data));
-    } catch (error) {
-      console.error('Error caching announcements:', error);
-    }
-  };
-
-  // Function to load cached announcements
-  const loadCachedAnnouncements = async () => {
-    try {
-      const cachedData = await AsyncStorage.getItem(CACHED_ANNOUNCEMENTS_KEY);
-      if (cachedData) {
-        setAnnouncements(JSON.parse(cachedData));
-      }
-    } catch (error) {
-      console.error('Error loading cached announcements:', error);
-    }
-  };
-
-  // Fetch announcements from API
   const fetchAnnouncements = useCallback(async () => {
+    if (!userToken) return;
+
     try {
       const config = {
         headers: {
           Authorization: `Bearer ${userToken}`,
         },
       };
-      
+
       const response = await axios.get(API_URL, config);
       const fetchedAnnouncements = response.data.data;
       
       setAnnouncements(fetchedAnnouncements);
-      cacheAnnouncements(fetchedAnnouncements);
+      setError(null);
     } catch (error) {
       console.error('Error fetching announcements:', error);
-      // Load cached data if network request fails
-      loadCachedAnnouncements();
+      setError('Unable to update announcements. Pull down to try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -87,21 +65,25 @@ const AllAnnouncements = () => {
     }
   }, [userToken, fontsLoaded]);
 
+  // Load initial data and setup auto-refresh
   useEffect(() => {
-    const initializeData = async () => {
-      // First load cached data for immediate display
-      await loadCachedAnnouncements();
-      // Then fetch fresh data
       fetchAnnouncements();
-    };
-    
-    initializeData();
+
+    // Auto refresh setup
+    const interval = setInterval(() => {
+      fetchAnnouncements();
+    }, 300000); // Refresh every 5 minutes
+
+    return () => clearInterval(interval);
   }, [fetchAnnouncements]);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchAnnouncements();
-  };
+  // Refresh control handler
+  const onRefresh = useCallback(() => {
+    if (!refreshing) {
+      setRefreshing(true);
+      fetchAnnouncements();
+    }
+  }, [refreshing, fetchAnnouncements]);
 
   const getImportanceStyle = (importance) => {
     switch(importance) {
@@ -149,31 +131,13 @@ const AllAnnouncements = () => {
     return null; // Don't render anything while fonts are loading
   }
 
-  if (loading && !refreshing) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#3f51b5" />
-        <Text style={styles.loadingText}>Loading Announcements...</Text>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <StatusBar barStyle="dark-content" backgroundColor="#f6f8fa" />
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={22} color="#fff" />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>Announcements</Text>
-        <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
-          <Ionicons name="refresh" size={22} color="#fff" />
-        </TouchableOpacity>
       </View>
 
       {/* Content */}
@@ -189,7 +153,16 @@ const AllAnnouncements = () => {
           />
         }
       >
-        {announcements.length > 0 ? (
+        {loading || !fontsLoaded ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={{ marginTop: 10 }}>Loading announcements...</Text>
+          </View>
+        ) : announcements.length === 0 ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ color: 'red', fontSize: 16 }}>No announcements found. Pull to refresh or check your connection.</Text>
+          </View>
+        ) : (
           announcements.map((announcement, index) => (
             <View 
               key={announcement._id || index} 
@@ -240,14 +213,6 @@ const AllAnnouncements = () => {
               </View>
             </View>
           ))
-        ) : (
-          <View style={styles.noAnnouncementsContainer}>
-            <Ionicons name="notifications-off" size={60} color="#ccc" />
-            <Text style={styles.noAnnouncementsText}>No announcements available</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
-              <Text style={styles.retryButtonText}>Tap to refresh</Text>
-            </TouchableOpacity>
-          </View>
         )}
       </ScrollView>
     </View>
@@ -273,11 +238,13 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    backgroundColor: '#3f51b5',
+    backgroundColor: '#3498db',
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -294,6 +261,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Outfit_600SemiBold',
     color: '#fff',
+    justifyContent: 'center',
   },
   backButton: {
     padding: 8,

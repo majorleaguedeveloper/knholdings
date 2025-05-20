@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import {
   View,
   Text,
@@ -11,8 +11,8 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   SafeAreaView,
+  Modal,
 } from 'react-native';
 import axios from 'axios';
 import { 
@@ -20,7 +20,6 @@ import {
   MaterialIcons, 
   Ionicons 
 } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { 
   useFonts,
@@ -29,6 +28,7 @@ import {
   Outfit_600SemiBold,
   Outfit_700Bold 
 } from '@expo-google-fonts/outfit';
+import AuthContext from '../../contexts/Authcontext';
 
 // Color theme
 const COLORS = {
@@ -45,9 +45,13 @@ const COLORS = {
   highlight: '#ebf5fb',
 };
 
+import { API_BASE_URL } from '../apiConfig';
+const API_URL = `${API_BASE_URL}/admin`;
+
 const ManageAnnouncements = () => {
+  const { userToken } = useContext(AuthContext);
   const [announcements, setAnnouncements] = useState([]);
-  const [newAnnouncement, setNewAnnouncement] = useState({
+  const [formData, setFormData] = useState({
     title: '',
     content: '',
     importance: 'medium',
@@ -55,6 +59,10 @@ const ManageAnnouncements = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [currentAnnouncementId, setCurrentAnnouncementId] = useState(null);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [announcementToDelete, setAnnouncementToDelete] = useState(null);
 
   // Load fonts
   const [fontsLoaded] = useFonts({
@@ -80,35 +88,20 @@ const ManageAnnouncements = () => {
   const fetchAnnouncements = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('userToken');
       
-      if (!token) {
+      if (!userToken) {
         Alert.alert('Error', 'Authentication token not found. Please login again.');
         return;
       }
       
-      const response = await axios.get('https://knholdingsbackend.onrender.com/api/admin/announcements', {
+      const response = await axios.get(`${API_URL}/announcements`, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${userToken}`,
         },
       });
-      
-      // Save announcements to AsyncStorage for offline access
-      await AsyncStorage.setItem('cachedAnnouncements', JSON.stringify(response.data.data));
       setAnnouncements(response.data.data);
     } catch (error) {
       console.error('Error fetching announcements:', error);
-      
-      // Try to load cached data if network fetch fails
-      try {
-        const cachedData = await AsyncStorage.getItem('cachedAnnouncements');
-        if (cachedData) {
-          setAnnouncements(JSON.parse(cachedData));
-          Alert.alert('Info', 'Showing cached announcements due to connection issues.');
-        }
-      } catch (cacheError) {
-        console.error('Error loading cached announcements:', cacheError);
-      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -121,18 +114,18 @@ const ManageAnnouncements = () => {
   };
 
   const validateForm = () => {
-    if (!newAnnouncement.title.trim()) {
+    if (!formData.title.trim()) {
       Alert.alert('Error', 'Please enter a title for the announcement');
       return false;
     }
-    if (!newAnnouncement.content.trim()) {
+    if (!formData.content.trim()) {
       Alert.alert('Error', 'Please enter content for the announcement');
       return false;
     }
     
     // Validate importance level
     const validImportanceLevels = ['low', 'medium', 'high'];
-    if (!validImportanceLevels.includes(newAnnouncement.importance.toLowerCase())) {
+    if (!validImportanceLevels.includes(formData.importance.toLowerCase())) {
       Alert.alert('Error', 'Importance must be low, medium, or high');
       return false;
     }
@@ -145,21 +138,19 @@ const ManageAnnouncements = () => {
 
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('userToken');
       
       const response = await axios.post(
-        'https://knholdingsbackend.onrender.com/api/admin/announcements',
-        newAnnouncement,
+        `${API_URL}/announcements`,
+        formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${userToken}`,
           },
         }
       );
       
       Alert.alert('Success', 'Announcement created successfully');
-      setNewAnnouncement({ title: '', content: '', importance: 'medium' });
-      setIsFormVisible(false);
+      resetForm();
       await fetchAnnouncements();
     } catch (error) {
       console.error('Error creating announcement:', error);
@@ -167,6 +158,81 @@ const ManageAnnouncements = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const editAnnouncement = async () => {
+    if (!validateForm() || !currentAnnouncementId) return;
+
+    try {
+      setLoading(true);
+      
+      const response = await axios.put(
+        `${API_URL}/announcements/${currentAnnouncementId}`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${userToken}`,
+          },
+        }
+      );
+      
+      Alert.alert('Success', 'Announcement updated successfully');
+      resetForm();
+      await fetchAnnouncements();
+    } catch (error) {
+      console.error('Error updating announcement:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to update announcement');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteAnnouncement = async () => {
+    try {
+      setLoading(true);
+      
+      const response = await axios.delete(
+        `${API_URL}/announcements/${announcementToDelete}`,
+        {
+          headers: {
+            Authorization: `Bearer ${userToken}`,
+          },
+        }
+      );
+      
+      Alert.alert('Success', 'Announcement deleted successfully');
+      setIsDeleteModalVisible(false);
+      setAnnouncementToDelete(null);
+      await fetchAnnouncements();
+    } catch (error) {
+      console.error('Error deleting announcement:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to delete announcement');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (announcement) => {
+    setFormData({
+      title: announcement.title,
+      content: announcement.content,
+      importance: announcement.importance
+    });
+    setCurrentAnnouncementId(announcement._id);
+    setIsEditMode(true);
+    setIsFormVisible(true);
+  };
+
+  const handleDelete = (announcementId) => {
+    setAnnouncementToDelete(announcementId);
+    setIsDeleteModalVisible(true);
+  };
+
+  const resetForm = () => {
+    setFormData({ title: '', content: '', importance: 'medium' });
+    setIsFormVisible(false);
+    setIsEditMode(false);
+    setCurrentAnnouncementId(null);
   };
 
   const getImportanceColor = (importance) => {
@@ -221,12 +287,17 @@ const ManageAnnouncements = () => {
       >
         <View style={styles.header}>
           <Text style={styles.title}>Manage Announcements</Text>
-          
         </View>
         <View>
           <TouchableOpacity 
             style={styles.toggleFormButton}
-            onPress={() => setIsFormVisible(!isFormVisible)}
+            onPress={() => {
+              if (isFormVisible && isEditMode) {
+                resetForm();
+              } else {
+                setIsFormVisible(!isFormVisible);
+              }
+            }}
           >
             <MaterialIcons 
               name={isFormVisible ? "expand-less" : "add"} 
@@ -234,7 +305,9 @@ const ManageAnnouncements = () => {
               color={COLORS.card} 
             />
             <Text style={styles.toggleFormButtonText}>
-              {isFormVisible ? "Hide Form" : "Add New Announcement"}
+              {isFormVisible 
+                ? (isEditMode ? "Cancel Edit" : "Hide Form") 
+                : "Add New Announcement"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -247,20 +320,22 @@ const ManageAnnouncements = () => {
           <>
             {isFormVisible && (
               <View style={styles.formCard}>
-                <Text style={styles.formTitle}>Create New Announcement</Text>
+                <Text style={styles.formTitle}>
+                  {isEditMode ? 'Edit Announcement' : 'Create New Announcement'}
+                </Text>
                 <TextInput
                   style={styles.input}
                   placeholder="Title"
                   placeholderTextColor={COLORS.lightText}
-                  value={newAnnouncement.title}
-                  onChangeText={(text) => setNewAnnouncement({ ...newAnnouncement, title: text })}
+                  value={formData.title}
+                  onChangeText={(text) => setFormData({ ...formData, title: text })}
                 />
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   placeholder="Content"
                   placeholderTextColor={COLORS.lightText}
-                  value={newAnnouncement.content}
-                  onChangeText={(text) => setNewAnnouncement({ ...newAnnouncement, content: text })}
+                  value={formData.content}
+                  onChangeText={(text) => setFormData({ ...formData, content: text })}
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
@@ -275,13 +350,13 @@ const ManageAnnouncements = () => {
                           styles.importanceButton,
                           {
                             backgroundColor:
-                              newAnnouncement.importance === level
+                              formData.importance === level
                                 ? getImportanceColor(level)
                                 : COLORS.card,
                           },
                         ]}
                         onPress={() =>
-                          setNewAnnouncement({ ...newAnnouncement, importance: level })
+                          setFormData({ ...formData, importance: level })
                         }
                       >
                         <Text
@@ -289,7 +364,7 @@ const ManageAnnouncements = () => {
                             styles.importanceButtonText,
                             {
                               color:
-                                newAnnouncement.importance === level
+                                formData.importance === level
                                   ? COLORS.card
                                   : getImportanceColor(level),
                             },
@@ -304,20 +379,23 @@ const ManageAnnouncements = () => {
                 <View style={styles.formButtons}>
                   <TouchableOpacity
                     style={[styles.button, styles.cancelButton]}
-                    onPress={() => {
-                      setNewAnnouncement({ title: '', content: '', importance: 'medium' });
-                      setIsFormVisible(false);
-                    }}
+                    onPress={resetForm}
                   >
                     <MaterialIcons name="cancel" size={18} color={COLORS.card} />
                     <Text style={styles.buttonText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.button, styles.submitButton]}
-                    onPress={createAnnouncement}
+                    onPress={isEditMode ? editAnnouncement : createAnnouncement}
                   >
-                    <MaterialIcons name="check" size={18} color={COLORS.card} />
-                    <Text style={styles.buttonText}>Submit</Text>
+                    <MaterialIcons 
+                      name={isEditMode ? "save" : "check"} 
+                      size={18} 
+                      color={COLORS.card} 
+                    />
+                    <Text style={styles.buttonText}>
+                      {isEditMode ? 'Update' : 'Submit'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -346,6 +424,20 @@ const ManageAnnouncements = () => {
                       <MaterialIcons name="access-time" size={14} color={COLORS.lightText} />
                       {` ${item.createdAt ? formatDate(item.createdAt) : 'Unknown date'}`}
                     </Text>
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity 
+                        style={styles.actionButton}
+                        onPress={() => handleEdit(item)}
+                      >
+                        <MaterialIcons name="edit" size={18} color={COLORS.primary} />
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.actionButton}
+                        onPress={() => handleDelete(item._id)}
+                      >
+                        <MaterialIcons name="delete" size={18} color={COLORS.danger} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               )}
@@ -368,6 +460,44 @@ const ManageAnnouncements = () => {
             />
           </>
         )}
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={isDeleteModalVisible}
+          onRequestClose={() => {
+            setIsDeleteModalVisible(false);
+            setAnnouncementToDelete(null);
+          }}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <MaterialIcons name="warning" size={40} color={COLORS.warning} />
+              <Text style={styles.modalTitle}>Confirm Deletion</Text>
+              <Text style={styles.modalText}>
+                Are you sure you want to delete this announcement? This action cannot be undone.
+              </Text>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => {
+                    setIsDeleteModalVisible(false);
+                    setAnnouncementToDelete(null);
+                  }}
+                >
+                  <Text style={styles.buttonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.deleteButton]}
+                  onPress={deleteAnnouncement}
+                >
+                  <Text style={styles.buttonText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -414,7 +544,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     marginHorizontal: 15,
-    justifyContent: 'center'
+    justifyContent: 'center',
+    marginVertical: 10,
   },
   toggleFormButtonText: {
     fontFamily: 'Outfit_600SemiBold',
@@ -499,6 +630,9 @@ const styles = StyleSheet.create({
   submitButton: {
     backgroundColor: COLORS.primary,
   },
+  deleteButton: {
+    backgroundColor: COLORS.danger,
+  },
   buttonText: {
     color: COLORS.card,
     fontFamily: 'Outfit_600SemiBold',
@@ -555,7 +689,8 @@ const styles = StyleSheet.create({
   },
   cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
     paddingTop: 10,
@@ -565,6 +700,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_400Regular',
     fontSize: 12,
     color: COLORS.lightText,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+  },
+  actionButton: {
+    padding: 8,
+    marginLeft: 10,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -591,6 +733,53 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_500Medium',
     color: COLORS.card,
     marginLeft: 6,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    padding: 24,
+    width: '80%',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  modalTitle: {
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 20,
+    color: COLORS.text,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  modalText: {
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 16,
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    flex: 1,
+    marginHorizontal: 4,
   },
 });
 

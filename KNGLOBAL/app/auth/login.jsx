@@ -178,9 +178,11 @@ const LoginScreen = () => {
               <Text style={styles.rememberMeText}>Remember me</Text>
             </TouchableOpacity>
             
+            {/* 
             <TouchableOpacity>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
+            */}
           </View>
           
           <TouchableOpacity 
@@ -204,12 +206,14 @@ const LoginScreen = () => {
           )}
         </View>
         
+        {/* 
         <View style={styles.registerContainer}>
           <Text style={styles.registerText}>Do not have an account?</Text>
           <TouchableOpacity onPress={() => router.push('/auth/register')}>
             <Text style={styles.registerLink}>Register</Text>
           </TouchableOpacity>
         </View>
+        */}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

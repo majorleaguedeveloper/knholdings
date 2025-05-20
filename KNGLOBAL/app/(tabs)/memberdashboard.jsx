@@ -16,7 +16,6 @@ import {
 import AuthContext from '../../contexts/Authcontext';
 import axios from 'axios';
 import { useRouter, useFocusEffect } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   useFonts, 
   Outfit_400Regular, 
@@ -57,47 +56,20 @@ const MemberDashboard = () => {
     OutfitBold: Outfit_700Bold,
   });
 
-  // Save dashboard data to AsyncStorage
-  const saveDashboardData = async (data) => {
-    try {
-      await AsyncStorage.setItem('dashboardData', JSON.stringify(data));
-    } catch (error) {
-      console.error('Error saving dashboard data:', error);
-    }
-  };
 
-  // Load dashboard data from AsyncStorage
-  const loadSavedDashboardData = async () => {
-    try {
-      const savedData = await AsyncStorage.getItem('dashboardData');
-      if (savedData) {
-        setDashboardData(JSON.parse(savedData));
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error('Error loading saved dashboard data:', error);
-    }
-  };
 
   const fetchDashboardData = async () => {
-    try {
-      if (!userToken) {
-        console.log('No user token available');
-        loadSavedDashboardData();
-        return;
-      }
-      
       const config = {
         headers: {
           Authorization: `Bearer ${userToken}`,
         },
       };
-      
+    try {           
       const [profileRes, sharesRes, announcementsRes, monthlySharesRes] = await Promise.all([
-        axios.get('https://knholdingsbackend.onrender.com/api/member/profile', config),
-        axios.get('https://knholdingsbackend.onrender.com/api/member/shares', config),
-        axios.get('https://knholdingsbackend.onrender.com/api/member/announcements', config),
-        axios.get('https://knholdingsbackend.onrender.com/api/member/shares/monthly', config)
+        axios.get('http://192.168.151.253:5000/api/member/profile', config),
+        axios.get('http://192.168.151.253:5000/api/member/shares', config),
+        axios.get('http://192.168.151.253:5000/api/member/announcements', config),
+        axios.get('http://192.168.151.253:5000/api/member/shares/monthly', config)
       ]);
 
       const newData = {
@@ -109,10 +81,8 @@ const MemberDashboard = () => {
       };
       
       setDashboardData(newData);
-      saveDashboardData(newData);
     } catch (error) {
       console.error('Error fetching member dashboard data:', error);
-      loadSavedDashboardData();
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -201,7 +171,7 @@ const MemberDashboard = () => {
   if (!fontsLoaded) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4f46e5" />
+        <ActivityIndicator size="large" color="#3498db" />
         <Text style={[styles.loadingText, {fontFamily: 'System'}]}>Loading fonts...</Text>
       </View>
     );
@@ -210,7 +180,7 @@ const MemberDashboard = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4f46e5" />
+        <ActivityIndicator size="large" color="#3498db" />
         <Text style={styles.loadingText}>Loading Member Dashboard...</Text>
       </View>
     );
@@ -224,7 +194,7 @@ const MemberDashboard = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollViewContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4f46e5"]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#3498db"]} />
         }
         showsVerticalScrollIndicator={false}
       >
@@ -235,14 +205,16 @@ const MemberDashboard = () => {
               <View style={styles.profileIcon}>
                 <FontAwesome name="user" size={28} color="#ffffff" />
               </View>
-              <View style={styles.profileInfo}>
+              <View>
                 <Text style={styles.welcomeText} numberOfLines={1}>
                   Welcome, {dashboardData.profile?.name}
                 </Text>
-                <Text style={styles.memberSince}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <FontAwesome5 name="calendar-check" size={12} color="#eff6ff" style={styles.smallIcon} />
-                  <Text> Member Since: {new Date(dashboardData.profile?.createdAt).toLocaleDateString()}</Text>
-                </Text>
+                  <Text style={styles.memberSince}>
+                    Member Since: {dashboardData.profile?.createdAt ? new Date(dashboardData.profile.createdAt).toLocaleDateString() : 'N/A'}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
@@ -252,7 +224,7 @@ const MemberDashboard = () => {
         <View style={styles.quickStatsContainer}>
           <View style={styles.statsCard}>
             <View style={[styles.statsIconContainer, styles.sharesIconBg]}>
-              <MaterialCommunityIcons name="chart-pie" size={22} color="#4f46e5" />
+              <MaterialCommunityIcons name="chart-pie" size={22} color="blue" />
             </View>
             <View style={styles.statsTextContainer}>
               <Text style={styles.statsValue}>{dashboardData.totalShares}</Text>
@@ -274,7 +246,7 @@ const MemberDashboard = () => {
           
           <View style={styles.statsCard}>
             <View style={[styles.statsIconContainer, styles.alertIconBg]}>
-              <Ionicons name="notifications" size={22} color="#f59e0b" />
+              <Ionicons name="notifications" size={22} color="red" />
             </View>
             <View style={styles.statsTextContainer}>
               <Text style={styles.statsValue}>{dashboardData.announcements.length}</Text>
@@ -286,14 +258,14 @@ const MemberDashboard = () => {
         {/* Monthly Summary Section - Inspired by ShareHistory */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="calendar-month-outline" size={20} color="#4f46e5" />
+            <MaterialCommunityIcons name="calendar-month-outline" size={20} color="#3498db" />
             <Text style={styles.sectionTitle}>Monthly Summary</Text>
             <TouchableOpacity 
               style={styles.viewAllButton}
               onPress={() => router.push('/memberpages/ShareHistory')}
             >
               <Text style={styles.viewAllText}>View All</Text>
-              <Ionicons name="chevron-forward" size={14} color="#4f46e5" />
+              <Ionicons name="chevron-forward" size={14} color="#3498db" />
             </TouchableOpacity>
           </View>
 
@@ -307,11 +279,11 @@ const MemberDashboard = () => {
                 <View key={index} style={styles.monthlyCard}>
                   <View style={styles.monthlyHeader}>
                     <View style={styles.monthlyTitleContainer}>
-                      <MaterialCommunityIcons name="calendar-month-outline" size={18} color="#4f46e5" />
+                      <MaterialCommunityIcons name="calendar-month-outline" size={18} color="#3498db" />
                       <Text style={styles.monthlyTitle}>{formatMonthYear(item.month)}</Text>
                     </View>
                     <View style={styles.monthlySharesContainer}>
-                      <MaterialCommunityIcons name="chart-timeline-variant" size={16} color="#4f46e5" />
+                      <MaterialCommunityIcons name="chart-timeline-variant" size={16} color="#3498db" />
                       <Text style={styles.monthlyShares}>{item.totalShares} {item.totalShares === 1 ? 'share' : 'shares'}</Text>
                     </View>
                   </View>
@@ -351,14 +323,14 @@ const MemberDashboard = () => {
         {/* Recent Share Purchases */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Feather name="trending-up" size={20} color="#4f46e5" />
+            <Feather name="trending-up" size={20} color="#3498db" />
             <Text style={styles.sectionTitle}>Recent Purchases</Text>
             <TouchableOpacity 
               style={styles.viewAllButton}
               onPress={() => router.push('/memberpages/ShareHistory')}
             >
               <Text style={styles.viewAllText}>View All</Text>
-              <Ionicons name="chevron-forward" size={14} color="#4f46e5" />
+              <Ionicons name="chevron-forward" size={14} color="#3498db" />
             </TouchableOpacity>
           </View>
 
@@ -367,7 +339,7 @@ const MemberDashboard = () => {
               <View key={index} style={styles.shareItem}>
                 <View style={styles.shareHeader}>
                   <View style={styles.shareDateContainer}>
-                    <MaterialCommunityIcons name="calendar-month" size={16} color="#4f46e5" style={styles.icon} />
+                    <MaterialCommunityIcons name="calendar-month" size={16} color="#3498db" style={styles.icon} />
                     <Text style={styles.shareDate}>{formatDate(share.purchaseDate)}</Text>
                   </View>
                   <View style={styles.shareQtyPrice}>
@@ -405,14 +377,14 @@ const MemberDashboard = () => {
         {/* Announcements */}
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="notifications" size={20} color="#4f46e5" />
+            <Ionicons name="notifications" size={20} color="#3498db" />
             <Text style={styles.sectionTitle}>Announcements</Text>
             <TouchableOpacity 
               style={styles.viewAllButton}
               onPress={() => router.push('/memberpages/AllAnnouncements')}
             >
               <Text style={styles.viewAllText}>View All</Text>
-              <Ionicons name="chevron-forward" size={14} color="#4f46e5" />
+              <Ionicons name="chevron-forward" size={14} color="#3498db" />
             </TouchableOpacity>
           </View>
 
@@ -446,25 +418,6 @@ const MemberDashboard = () => {
           )}
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => router.push('/memberpages/UpdateProfile')}
-          >
-            <FontAwesome name="user-circle" size={20} color="#ffffff" />
-            <Text style={styles.actionButtonText}>Update Profile</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.secondaryButton]}
-            onPress={() => router.push('/memberpages/ShareHistory')}
-          >
-            <MaterialCommunityIcons name="file-document-outline" size={20} color="#ffffff" />
-            <Text style={styles.actionButtonText}>Share History</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Extra padding at bottom to prevent content being hidden by tab bar */}
         <View style={styles.bottomSpacer} />
 
@@ -477,7 +430,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f5f7fa',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   scrollView: {
     flex: 1,
@@ -527,9 +479,6 @@ const styles = StyleSheet.create({
     marginRight: 14,
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  profileInfo: {
-    flex: 1,
   },
   welcomeText: {
     fontFamily: 'OutfitBold',
@@ -632,7 +581,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     fontFamily: 'OutfitMedium',
     fontSize: 14,
-    color: '#4f46e5',
+    color: '#3498db',
     marginRight: 2,
   },
   
@@ -682,7 +631,7 @@ const styles = StyleSheet.create({
   monthlyShares: {
     fontFamily: 'OutfitSemiBold',
     fontSize: 13,
-    color: '#4f46e5',
+    color: '#3498db',
     marginLeft: 4,
   },
   monthlyInvestment: {
@@ -833,7 +782,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
  announcementBadge: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#3498db',
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -899,7 +848,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '48%',
-    shadowColor: '#4f46e5',
+    shadowColor: '#3498db',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

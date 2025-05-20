@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, View, Text } from 'react-native';
+import AuthContext from '../../contexts/Authcontext'; // Adjust path as needed
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { userData } = useContext(AuthContext);
   
   // Define tab bar styles based on platform
   const tabBarStyle = {
@@ -18,6 +20,9 @@ export default function TabLayout() {
     paddingBottom: Platform.OS === 'ios' ? insets.bottom : 0,
     paddingTop: 5,
   };
+
+  // Check if user is admin - could be used for conditional tabs
+  const isAdmin = userData?.role === 'admin';
 
   return (
     <Tabs
@@ -61,17 +66,18 @@ export default function TabLayout() {
         },
         unmountOnBlur: false, // Set to true if you want to reset screen state when tab is unfocused
       })}
-      initialRouteName="memberdashboard"
+      initialRouteName="admindashboard"
     >
 
 
         <Tabs.Screen 
-          name="memberdashboard" 
+          name="admindashboard" 
           options={{ 
-            title: 'Home',
+            title: 'Admin',
             tabBarLabel: 'Home'
           }} 
         />
+
 
 
       <Tabs.Screen 

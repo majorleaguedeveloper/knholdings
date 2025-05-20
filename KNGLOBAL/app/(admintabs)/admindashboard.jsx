@@ -380,7 +380,7 @@ const AdminDashboard = () => {
             
             <TouchableOpacity 
               style={styles.actionCard}
-              onPress={() => router.push('/adminpages/ShareDistribution')}
+              onPress={() => router.push('/adminpages/AdminSharesScreen')}
             >
               <LinearGradient
                 colors={['#FF6B6B', '#FF8E53']}

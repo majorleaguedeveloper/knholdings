@@ -25,20 +25,21 @@ import {
   Outfit_600SemiBold,
   Outfit_700Bold
 } from '@expo-google-fonts/outfit';
+import { API_BASE_URL } from '../apiConfig';
 
 const ShareHistory = () => {
   const { userToken } = useContext(AuthContext);
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
   const [shareData, setShareData] = useState({
     totalShares: 0,
     shares: [],
     monthlyShares: []
   });
-  const [activeTab, setActiveTab] = useState('all'); // 'all' or 'monthly'
+  const [activeTab, setActiveTab] = useState('all');
 
-  // Load custom fonts
   const [fontsLoaded] = useFonts({
     Outfit_400Regular,
     Outfit_500Medium,
@@ -46,50 +47,65 @@ const ShareHistory = () => {
     Outfit_700Bold
   });
 
-  const fetchShareData = async () => {
+  const fetchShareData = useCallback(async () => {
+    if (!userToken) return;
+
     try {
-      setLoading(true);
       const config = {
         headers: {
           Authorization: `Bearer ${userToken}`,
         },
       };
-      
+
       const [sharesRes, monthlySharesRes] = await Promise.all([
-        axios.get('https://knholdingsbackend.onrender.com/api/member/shares', config),
-        axios.get('https://knholdingsbackend.onrender.com/api/member/shares/monthly', config)
+        axios.get(`${API_BASE_URL}/member/shares`, config),
+        axios.get(`${API_BASE_URL}/member/shares/monthly`, config)
       ]);
 
-      setShareData({
+      const newData = {
         totalShares: sharesRes.data.totalShares,
         shares: sharesRes.data.data,
         monthlyShares: monthlySharesRes.data.data
-      });
+      };
+
+      setShareData(newData);
+      setError(null);
     } catch (error) {
       console.error('Error fetching share data:', error);
+      setError('Unable to update share history. Pull down to try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [userToken]);
 
-  // Fetch data when component mounts
+  // Load initial data and setup auto-refresh
   useEffect(() => {
-    fetchShareData();
-  }, []);
 
-  // Refetch data when screen comes into focus
+      fetchShareData();
+
+    // Auto refresh setup
+    const interval = setInterval(() => {
+      fetchShareData();
+    }, 300000); // Refresh every 5 minutes
+
+    return () => clearInterval(interval);
+  }, [fetchShareData]);
+
+  // Refresh control handler
+  const onRefresh = useCallback(() => {
+    if (!refreshing) {
+      setRefreshing(true);
+      fetchShareData();
+    }
+  }, [refreshing, fetchShareData]);
+
+  // Refetch when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      fetchShareData();
-      return () => {};
-    }, [])
+          fetchShareData();
+    }, [fetchShareData])
   );
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchShareData();
-  }, []);
 
   const formatCurrency = (amount) => {
     return `$${parseFloat(amount).toFixed(2)}`;
@@ -116,7 +132,7 @@ const ShareHistory = () => {
     <View style={styles.shareItem}>
       <View style={styles.shareHeader}>
         <View style={styles.shareDateContainer}>
-          <MaterialCommunityIcons name="calendar-month" size={18} color="#4f46e5" style={styles.icon} />
+          <MaterialCommunityIcons name="calendar-month" size={18} color="#3498db" style={styles.icon} />
           <Text style={styles.shareDate}>{formatDate(item.purchaseDate)}</Text>
         </View>
         <View style={styles.shareQtyPrice}>
@@ -154,11 +170,11 @@ const ShareHistory = () => {
     <View style={styles.monthlyItem}>
       <View style={styles.monthlyHeader}>
         <View style={styles.monthlyTitleContainer}>
-          <MaterialCommunityIcons name="calendar-month-outline" size={20} color="#4f46e5" style={styles.monthlyIcon} />
+          <MaterialCommunityIcons name="calendar-month-outline" size={20} color="#3498db" style={styles.monthlyIcon} />
           <Text style={styles.monthlyTitle}>{formatMonthYear(item.month)}</Text>
         </View>
         <View style={styles.monthlySharesContainer}>
-          <MaterialCommunityIcons name="chart-timeline-variant" size={18} color="#4f46e5" style={styles.sharesIcon} />
+          <MaterialCommunityIcons name="chart-timeline-variant" size={18} color="#3498db" style={styles.sharesIcon} />
           <Text style={styles.monthlyShares}>{item.totalShares} {item.totalShares === 1 ? 'share' : 'shares'}</Text>
         </View>
       </View>
@@ -195,7 +211,7 @@ const ShareHistory = () => {
   if (!fontsLoaded) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4f46e5" />
+        <ActivityIndicator size="large" color="#3498db" />
         <Text style={[styles.loadingText, {fontFamily: 'System'}]}>Loading fonts...</Text>
       </View>
     );
@@ -204,7 +220,7 @@ const ShareHistory = () => {
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4f46e5" />
+        <ActivityIndicator size="large" color="#3498db" />
         <Text style={styles.loadingText}>Loading share history...</Text>
       </View>
     );
@@ -214,20 +230,9 @@ const ShareHistory = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar style="auto" />
       
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#4f46e5" />
-          <Text style={styles.backButtonText}>Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Share History</Text>
-      </View>
-      
       <View style={styles.summary}>
         <View style={styles.summaryIconContainer}>
-          <MaterialCommunityIcons name="chart-pie" size={28} color="#4f46e5" />
+          <MaterialCommunityIcons name="chart-pie" size={28} color="#3498db" />
         </View>
         <View style={styles.summaryTextContainer}>
           <Text style={styles.summaryTitle}>Total Shares</Text>
@@ -243,7 +248,7 @@ const ShareHistory = () => {
           <MaterialCommunityIcons 
             name="format-list-bulleted" 
             size={18} 
-            color={activeTab === 'all' ? "#4f46e5" : "#6b7280"} 
+            color={activeTab === 'all' ? "#3498db" : "#6b7280"} 
             style={styles.tabIcon}
           />
           <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>All Purchases</Text>
@@ -255,7 +260,7 @@ const ShareHistory = () => {
           <MaterialCommunityIcons 
             name="calendar-month-outline" 
             size={18} 
-            color={activeTab === 'monthly' ? "#4f46e5" : "#6b7280"} 
+            color={activeTab === 'monthly' ? "#3498db" : "#6b7280"} 
             style={styles.tabIcon}
           />
           <Text style={[styles.tabText, activeTab === 'monthly' && styles.activeTabText]}>Monthly Summary</Text>
@@ -270,7 +275,7 @@ const ShareHistory = () => {
             keyExtractor={(item) => item._id}
             contentContainerStyle={styles.listContainer}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4f46e5"]} />
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#3498db"]} />
             }
           />
         ) : (
@@ -291,7 +296,7 @@ const ShareHistory = () => {
             keyExtractor={(item) => item.month}
             contentContainerStyle={styles.listContainer}
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#4f46e5"]} />
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#3498db"]} />
             }
           />
         ) : (
@@ -346,7 +351,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 16,
-    color: '#4f46e5',
+    color: '#3498db',
     fontFamily: 'Outfit_500Medium',
     marginLeft: 4,
   },
@@ -370,6 +375,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   summaryIconContainer: {
+    display: 'flex',
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -379,7 +385,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   summaryTextContainer: {
-    flex: 1,
+    display: 'flex',
   },
   summaryTitle: {
     fontSize: 14,
@@ -426,7 +432,7 @@ const styles = StyleSheet.create({
     color: '#6b7280',
   },
   activeTabText: {
-    color: '#4f46e5',
+    color: '#3498db',
     fontFamily: 'Outfit_600SemiBold',
   },
   listContainer: {
@@ -566,7 +572,7 @@ const styles = StyleSheet.create({
   monthlyShares: {
     fontSize: 14,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#4f46e5',
+    color: '#3498db',
   },
   monthlyTotal: {
     flexDirection: 'row',
@@ -659,7 +665,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   refreshButton: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#3498db',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,

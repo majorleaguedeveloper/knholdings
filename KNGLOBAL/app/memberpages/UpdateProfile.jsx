@@ -25,6 +25,7 @@ import {
   Outfit_700Bold
 } from '@expo-google-fonts/outfit';
 import { MaterialIcons, Ionicons, FontAwesome } from '@expo/vector-icons';
+import { API_BASE_URL } from '../apiConfig';
 
 const CACHE_KEY = 'user_profile_data';
 
@@ -72,19 +73,16 @@ const UpdateProfile = () => {
           Authorization: `Bearer ${userToken}`,
         },
       };
-      
-      const response = await axios.get('https://knholdingsbackend.onrender.com/api/member/profile', config);
-      
+      console.log('Fetching profile data...');
+      const response = await axios.get(`${API_BASE_URL}/member/profile`, config);
+      console.log('Profile response:', response.data);
       if (response.data.success) {
         const { name, phone } = response.data.data;
         const profileData = {
           name: name || '',
           phone: phone || ''
         };
-        
         setFormData(profileData);
-        
-        // Cache the data for offline access or quick loading
         await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(profileData));
       }
     } catch (error) {
@@ -93,6 +91,7 @@ const UpdateProfile = () => {
         'Error',
         'Unable to load profile data. Please try again later.'
       );
+      setFormData({ name: '', phone: '' });
     } finally {
       setLoading(false);
     }
@@ -143,7 +142,7 @@ const UpdateProfile = () => {
       };
       
       const response = await axios.put(
-        'https://knholdingsbackend.onrender.com/api/member/profile',
+        `${API_BASE_URL}/member/profile`,
         formData,
         config
       );
@@ -170,110 +169,112 @@ const UpdateProfile = () => {
   };
 
   // Show loading state for both API data loading and font loading
-  if (loading || !fontsLoaded) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#5046e5" />
-        <Text style={[styles.loadingText, fontsLoaded && {fontFamily: 'Outfit_500Medium'}]}>
-          Loading profile data...
-        </Text>
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-      >
-        <StatusBar style="dark" />
-        <ScrollView 
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.headerSection}>
-            <View style={styles.profileIconContainer}>
-              <FontAwesome name="user-circle" size={80} color="#3498db" />
-            </View>
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>Update Profile</Text>
-              <Text style={styles.headerSubtitle}>Edit your personal information</Text>
-            </View>
-          </View>
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      {loading || !fontsLoaded ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={{ marginTop: 10 }}>Loading profile...</Text>
+        </View>
+      ) : !formData.name ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: 'red', fontSize: 16 }}>Unable to load profile data. Please pull to refresh or check your connection.</Text>
+        </View>
+      ) : (
+        <SafeAreaView style={styles.safeArea}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.container}
+          >
+            <StatusBar style="dark" />
+            <ScrollView 
+              contentContainerStyle={styles.scrollContainer}
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.headerSection}>
+                <View style={styles.profileIconContainer}>
+                  <FontAwesome name="user-circle" size={80} color="#3498db" />
+                </View>
+                <View style={styles.header}>
+                  <Text style={styles.headerTitle}>Update Profile</Text>
+                  <Text style={styles.headerSubtitle}>Edit your personal information</Text>
+                </View>
+              </View>
 
-          <View style={styles.card}>
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>
-                <MaterialIcons name="person" size={18} color="#5046e5" style={styles.inputIcon} />
-                {' '}Full Name
-              </Text>
-              <TextInput
-                style={[styles.input, errors.name && styles.inputError]}
-                value={formData.name}
-                onChangeText={(value) => handleChange('name', value)}
-                placeholder="Enter your full name"
-                autoCapitalize="words"
-                placeholderTextColor="#9ca3af"
-              />
-              {errors.name && (
-                <Text style={styles.errorText}>
-                  <Ionicons name="alert-circle" size={14} color="#ef4444" /> {errors.name}
-                </Text>
-              )}
-            </View>
+              <View style={styles.card}>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>
+                    <MaterialIcons name="person" size={18} color="#5046e5" style={styles.inputIcon} />
+                    {' '}Full Name
+                  </Text>
+                  <TextInput
+                    style={[styles.input, errors.name && styles.inputError]}
+                    value={formData.name}
+                    onChangeText={(value) => handleChange('name', value)}
+                    placeholder="Enter your full name"
+                    autoCapitalize="words"
+                    placeholderTextColor="#9ca3af"
+                  />
+                  {errors.name && (
+                    <Text style={styles.errorText}>
+                      <Ionicons name="alert-circle" size={14} color="#ef4444" /> {errors.name}
+                    </Text>
+                  )}
+                </View>
 
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>
-                <MaterialIcons name="phone" size={18} color="#5046e5" style={styles.inputIcon} />
-                {' '}Phone Number
-              </Text>
-              <TextInput
-                style={[styles.input, errors.phone && styles.inputError]}
-                value={formData.phone}
-                onChangeText={(value) => handleChange('phone', value)}
-                placeholder="Enter your phone number"
-                keyboardType="phone-pad"
-                placeholderTextColor="#9ca3af"
-              />
-              {errors.phone && (
-                <Text style={styles.errorText}>
-                  <Ionicons name="alert-circle" size={14} color="#ef4444" /> {errors.phone}
-                </Text>
-              )}
-            </View>
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>
+                    <MaterialIcons name="phone" size={18} color="#5046e5" style={styles.inputIcon} />
+                    {' '}Phone Number
+                  </Text>
+                  <TextInput
+                    style={[styles.input, errors.phone && styles.inputError]}
+                    value={formData.phone}
+                    onChangeText={(value) => handleChange('phone', value)}
+                    placeholder="Enter your phone number"
+                    keyboardType="phone-pad"
+                    placeholderTextColor="#9ca3af"
+                  />
+                  {errors.phone && (
+                    <Text style={styles.errorText}>
+                      <Ionicons name="alert-circle" size={14} color="#ef4444" /> {errors.phone}
+                    </Text>
+                  )}
+                </View>
 
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => router.back()}
-                disabled={updating}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="close-outline" size={18} color="#4b5563" />
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.updateButton}
-                onPress={handleSubmit}
-                disabled={updating}
-                activeOpacity={0.7}
-              >
-                {updating ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <>
-                    <Ionicons name="save-outline" size={18} color="#ffffff" />
-                    <Text style={styles.updateButtonText}>Update Profile</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+                <View style={styles.buttonContainer}>
+                  <TouchableOpacity 
+                    style={styles.cancelButton}
+                    onPress={() => router.back()}
+                    disabled={updating}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="close-outline" size={18} color="#4b5563" />
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.updateButton}
+                    onPress={handleSubmit}
+                    disabled={updating}
+                    activeOpacity={0.7}
+                  >
+                    {updating ? (
+                      <ActivityIndicator size="small" color="#ffffff" />
+                    ) : (
+                      <>
+                        <Ionicons name="save-outline" size={18} color="#ffffff" />
+                        <Text style={styles.updateButtonText}>Update Profile</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      )}
+    </View>
   );
 };
 

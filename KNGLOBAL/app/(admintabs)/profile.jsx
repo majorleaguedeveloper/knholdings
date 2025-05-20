@@ -90,17 +90,13 @@ const Profile = () => {
       </View>
     );
   }
-  if (!userData || !userData.name) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={{ color: 'red', fontSize: 16 }}>Unable to load profile info. Please log in again.</Text>
-      </View>
-    );
-  }
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Profile</Text>
+        </View>
         
         <View style={styles.profileContainer}>
           <View style={styles.avatarContainer}>
@@ -169,8 +165,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
     borderBottomColor: '#e1e1e1',
-    display: 'flex',
-    alignItems: 'center',
   },
   headerTitle: {
     fontFamily: 'Outfit_600SemiBold',

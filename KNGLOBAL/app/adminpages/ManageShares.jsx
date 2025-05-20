@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import {
   View,
   Text,
@@ -15,19 +15,21 @@ import {
   RefreshControl
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   FontAwesome, 
   MaterialIcons, 
   Ionicons,
-  AntDesign 
+  AntDesign,
+  MaterialCommunityIcons
 } from '@expo/vector-icons';
 import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
+import AuthContext from '../../contexts/Authcontext';
 
-const API_BASE_URL = 'https://knholdingsbackend.onrender.com/api';
+const API_BASE_URL = 'http://192.168.151.253:5000/api';
 
 const ManageShares = () => {
   // Load fonts
@@ -37,33 +39,37 @@ const ManageShares = () => {
     Outfit_600SemiBold,
     Outfit_700Bold
   });
-
+  const { userToken } = useContext(AuthContext);
   const [members, setMembers] = useState([]);
   const [shares, setShares] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
+  
+  // Date picker states
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [defaultRate, setDefaultRate] = useState(10); // Default rate per share
+  
   const [newShare, setNewShare] = useState({
     user: '',
     amountPaid: '',
-    pricePerShare: 0,
+    pricePerShare: '10', // Default price
     quantity: '',
     paymentMethod: 'paypal',
     notes: '',
+    purchaseDate: new Date(), // Default to current date
   });
-  const ratePerShare = 10; // Example rate per share
 
   const fetchShares = useCallback(async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) {
+      if (!userToken) {
         Alert.alert('Session Error', 'Please log in again');
         return;
       }
       
       const response = await axios.get(`${API_BASE_URL}/admin/shares`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${userToken}` },
       });
       
       setShares(response.data.data);
@@ -96,10 +102,9 @@ const ManageShares = () => {
     }
 
     try {
-      const token = await AsyncStorage.getItem('userToken');
       const response = await axios.get(
         `${API_BASE_URL}/admin/members?search=${query}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${userToken}` } }
       );
       setMembers(response.data.data);
     } catch (error) {
@@ -114,40 +119,81 @@ const ManageShares = () => {
     setMembers([]);
   };
 
+  // Handle date picker changes
+  const onDateChange = (event, selectedDate) => {
+    const currentDate = selectedDate || newShare.purchaseDate;
+    setShowDatePicker(Platform.OS === 'ios');
+    setNewShare({ ...newShare, purchaseDate: currentDate });
+  };
+
   const calculateShares = (amountPaid) => {
     if (!amountPaid || isNaN(parseFloat(amountPaid))) {
       setNewShare({ ...newShare, amountPaid, quantity: '0' });
       return;
     }
     
-    const quantity = (parseFloat(amountPaid) / ratePerShare).toFixed(2);
+    const pricePerShare = parseFloat(newShare.pricePerShare) || defaultRate;
+    const quantity = (parseFloat(amountPaid) / pricePerShare).toFixed(2);
     setNewShare({ ...newShare, amountPaid, quantity });
   };
 
+  // Update quantity when price changes
+  const handlePriceChange = (price) => {
+    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+      setNewShare({ ...newShare, pricePerShare: price, quantity: '0' });
+      return;
+    }
+    
+    const pricePerShare = parseFloat(price);
+    let quantity = '0';
+    
+    if (newShare.amountPaid && !isNaN(parseFloat(newShare.amountPaid))) {
+      quantity = (parseFloat(newShare.amountPaid) / pricePerShare).toFixed(2);
+    }
+    
+    setNewShare({ ...newShare, pricePerShare: price, quantity });
+  };
+
   const createSharePurchase = async () => {
-    if (!newShare.user || !newShare.amountPaid || !newShare.paymentMethod) {
+    if (!newShare.user || !newShare.amountPaid || !newShare.paymentMethod || !newShare.pricePerShare) {
       Alert.alert('Missing Information', 'Please fill in all required fields');
+      return;
+    }
+    
+    if (parseFloat(newShare.pricePerShare) <= 0) {
+      Alert.alert('Invalid Price', 'Price per share must be greater than zero');
       return;
     }
   
     try {
-      const token = await AsyncStorage.getItem('userToken');
       const shareData = {
         ...newShare,
-        pricePerShare: ratePerShare,
+        pricePerShare: parseFloat(newShare.pricePerShare),
+        amountPaid: parseFloat(newShare.amountPaid),
+        quantity: parseFloat(newShare.quantity),
+        // Convert date to ISO string for API
+        purchaseDate: newShare.purchaseDate.toISOString()
       };
   
       await axios.post(
         `${API_BASE_URL}/admin/shares`,
         shareData,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${userToken}` } }
       );
       
       Alert.alert('Success', 'Share purchase recorded successfully');
-      setNewShare({ user: '', amountPaid: '', quantity: '', paymentMethod: 'paypal', notes: '' });
+      setNewShare({ 
+        user: '', 
+        amountPaid: '', 
+        quantity: '', 
+        pricePerShare: '10', 
+        paymentMethod: 'paypal', 
+        notes: '',
+        purchaseDate: new Date()
+      });
       setSelectedUser(null);
       fetchShares();
-      router.replace('/(tabs)/dashboard')
+      router.replace('/(admintabs)/admindashboard');
     } catch (error) {
       console.error('Error creating share purchase:', error);
       const errorMessage = error.response?.data?.message || 'Failed to create share purchase';
@@ -178,7 +224,8 @@ const ManageShares = () => {
       <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoidView}
+        style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         <View style={styles.header}>
           <Text style={styles.title}>Manage Shares</Text>
@@ -206,7 +253,7 @@ const ManageShares = () => {
                     </View>
                     <View style={styles.cardHeaderRight}>
                       <Text style={styles.cardDate}>
-                        {formatDate(item.createdAt)}
+                        {formatDate(item.purchaseDate || item.createdAt)}
                       </Text>
                     </View>
                   </View>
@@ -226,7 +273,7 @@ const ManageShares = () => {
                     
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Total Amount:</Text>
-                      <Text style={styles.detailHighlight}>${parseFloat(item.amountPaid).toFixed(2)}</Text>
+                      <Text style={styles.detailHighlight}>${parseFloat(item.totalAmount || item.amountPaid).toFixed(2)}</Text>
                     </View>
                     
                     <View style={styles.detailRow}>
@@ -260,7 +307,11 @@ const ManageShares = () => {
           )}
         </View>
 
-        <ScrollView style={styles.formContainer}>
+        <ScrollView
+          style={[styles.formContainer, { flex: 1 }]}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.formTitle}>Add New Share Purchase</Text>
           
           <View style={styles.fieldContainer}>
@@ -278,26 +329,20 @@ const ManageShares = () => {
             
             {members.length > 0 && (
               <View style={styles.membersList}>
-                <FlatList
-                  data={members}
-                  keyExtractor={(item) => item._id}
-                  nestedScrollEnabled={true}
-                  scrollEnabled={true}
-                  style={{ maxHeight: 150 }}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.memberItem}
-                      onPress={() => selectUser(item)}
-                    >
-                      <AntDesign name="user" size={16} color="#3498db" style={styles.memberIcon} />
-                      <View>
-                        <Text style={styles.memberItemName}>{item.name}</Text>
-                        <Text style={styles.memberItemEmail}>{item.email}</Text>
-                      </View>
-                      <AntDesign name="right" size={14} color="#A0A0A0" style={styles.rightIcon} />
-                    </TouchableOpacity>
-                  )}
-                />
+                {members.map((item) => (
+                  <TouchableOpacity
+                    key={item._id}
+                    style={styles.memberItem}
+                    onPress={() => selectUser(item)}
+                  >
+                    <AntDesign name="user" size={16} color="#3498db" style={styles.memberIcon} />
+                    <View>
+                      <Text style={styles.memberItemName}>{item.name}</Text>
+                      <Text style={styles.memberItemEmail}>{item.email}</Text>
+                    </View>
+                    <AntDesign name="right" size={14} color="#A0A0A0" style={styles.rightIcon} />
+                  </TouchableOpacity>
+                ))}
               </View>
             )}
             
@@ -321,6 +366,46 @@ const ManageShares = () => {
             )}
           </View>
           
+          {/* New Date Picker Field */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Purchase Date</Text>
+            <TouchableOpacity 
+              style={styles.datePickerButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={styles.dateText}>
+                {newShare.purchaseDate.toLocaleDateString()}
+              </Text>
+              <MaterialCommunityIcons name="calendar-month" size={22} color="#3498db" />
+            </TouchableOpacity>
+            
+            {showDatePicker && (
+              <DateTimePicker
+                value={newShare.purchaseDate}
+                mode="date"
+                display="default"
+                onChange={onDateChange}
+                maximumDate={new Date()}
+              />
+            )}
+          </View>
+          
+          {/* Price Per Share Field */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Price Per Share</Text>
+            <View style={styles.inputWithIcon}>
+              <TextInput
+                style={styles.amountInput}
+                placeholder="10.00"
+                placeholderTextColor="#A0A0A0"
+                value={newShare.pricePerShare}
+                keyboardType="numeric"
+                onChangeText={handlePriceChange}
+              />
+              <Text style={styles.currencySymbol}>$</Text>
+            </View>
+          </View>
+          
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>Amount Paid</Text>
             <View style={styles.inputWithIcon}>
@@ -341,7 +426,7 @@ const ManageShares = () => {
                 {parseFloat(newShare.quantity || 0).toFixed(2)}
               </Text>
               <Text style={styles.sharesRate}>
-                (Rate: ${ratePerShare}/share)
+                (Rate: ${parseFloat(newShare.pricePerShare || defaultRate).toFixed(2)}/share)
               </Text>
             </View>
           </View>
@@ -361,6 +446,7 @@ const ManageShares = () => {
                 <Picker.Item label="Bank Transfer" value="bank transfer" />
                 <Picker.Item label="Skrill" value="skrill" />
                 <Picker.Item label="Cash" value="cash" />
+                <Picker.Item label="Check" value="check" />
                 <Picker.Item label="Other" value="other" />
               </Picker>
             </View>
@@ -382,10 +468,11 @@ const ManageShares = () => {
           <TouchableOpacity 
             style={[
               styles.submitButton, 
-              (!selectedUser || !newShare.amountPaid) && styles.submitButtonDisabled
+              (!selectedUser || !newShare.amountPaid || parseFloat(newShare.pricePerShare) <= 0) && 
+                styles.submitButtonDisabled
             ]} 
             onPress={createSharePurchase}
-            disabled={!selectedUser || !newShare.amountPaid}
+            disabled={!selectedUser || !newShare.amountPaid || parseFloat(newShare.pricePerShare) <= 0}
           >
             <FontAwesome name="plus" size={18} color="#fff" />
             <Text style={styles.submitButtonText}>Create Share Purchase</Text>
@@ -745,6 +832,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Outfit_600SemiBold',
     marginLeft: 8,
+  },
+  // New styles for date picker
+  datePickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: 12,
+  },
+  dateText: {
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 15,
+    color: COLORS.text,
   },
 });
 

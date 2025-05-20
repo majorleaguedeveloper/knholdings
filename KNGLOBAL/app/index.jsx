@@ -1,9 +1,8 @@
 import React, { useEffect, useContext, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, Platform, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, Platform, StatusBar, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AuthContext from '../contexts/Authcontext'; // Adjust the path if necessary
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -14,6 +13,7 @@ const Index = () => {
   const router = useRouter();
   const { isAuthenticated, userData } = useContext(AuthContext);
   const [appIsReady, setAppIsReady] = useState(false);
+  const [error, setError] = useState(null);
 
   // Load custom fonts
   const [fontsLoaded] = useFonts({
@@ -34,7 +34,7 @@ const Index = () => {
           }
         });
       } catch (e) {
-        console.warn(e);
+        console.warn('Error preparing app:', e);
       } finally {
         // Tell the application to render
         setAppIsReady(true);
@@ -46,73 +46,110 @@ const Index = () => {
 
   useEffect(() => {
     // Hide splash screen once app is ready
-    if (appIsReady) {
-      SplashScreen.hideAsync();
+    async function hideSplash() {
+      if (appIsReady) {
+        try {
+          await SplashScreen.hideAsync();
+        } catch (e) {
+          console.warn('Error hiding splash screen:', e);
+        }
+      }
     }
+    
+    hideSplash();
   }, [appIsReady]);
 
   // Check authentication status and redirect if needed
   useEffect(() => {
     const checkAuthAndRedirect = async () => {
-      if (isAuthenticated() && userData) {
-        router.replace('/(tabs)/dashboard');
+      try {
+        console.log('Auth check:', { isAuthenticated, userData });
+        if (isAuthenticated && userData) {
+          // Check user role and redirect accordingly
+          if (userData.role === 'admin') {
+            console.log('Redirecting to admin dashboard');
+            await router.replace('/(admintabs)/admindashboard');
+          } else if (userData.role === 'member') {
+            console.log('Redirecting to member dashboard');
+            await router.replace('/(tabs)/memberdashboard');
+          } else {
+            console.warn('Unknown user role:', userData.role);
+            // Optionally, redirect to a default dashboard or show an error
+            await router.replace('/(tabs)/admindashboard');
+          }
+        } else {
+          console.log('User not authenticated or userData not available');
+        }
+      } catch (e) {
+        console.error('Navigation error:', e);
+        setError('Navigation error: ' + e.message);
       }
     };
     
     if (appIsReady) {
       checkAuthAndRedirect();
     }
-  }, [appIsReady, isAuthenticated, userData]);
+  }, [appIsReady, isAuthenticated, userData, router]);
 
-  // Show loading screen while fonts are loading
-  if (!appIsReady) {
-    return null; // This return null is important - we don't want to render anything while splash screen is visible
+  // Show loading indicator while fonts are loading
+  if (!appIsReady || !fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
+  // Show error if navigation fails
+  if (error) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={{ color: 'red', fontSize: 16 }}>{error}</Text>
+      </View>
+    );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
+      <StatusBar barStyle="light-content" backgroundColor="#1a1a2e" />
       
-      <View style={styles.headerContainer}>
-        <Image 
-          source={require('../assets/images/react-logo.png')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </View>
-      
-      <View style={styles.contentContainer}>
-        <Text style={styles.title}>KN Holdings</Text>
-        <Text style={styles.subtitle}>Your trusted partner in financial growth</Text>
-      </View>
+      <LinearGradient
+        colors={['#1a1a2e', '#16213e', '#0f3460']}
+        style={styles.gradientBackground}
+      >
+        <View style={styles.headerContainer}>
+          <Image 
+            source={require('../assets/images/react-logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        
+        <View style={styles.contentContainer}>
+          <Text style={styles.title}>KN Holdings</Text>
+          <Text style={styles.subtitle}>Your trusted partner in financial growth</Text>
+        </View>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity 
-          style={styles.loginButton} 
-          onPress={() => router.push('/auth/login')}
-        >
-          <Text style={styles.loginButtonText}>Login</Text>
-        </TouchableOpacity>
-
-        <LinearGradient
-          colors={['#4CD964', '#5AC8FA']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.registerButtonGradient}
-        >
+        <View style={styles.buttonContainer}>
           <TouchableOpacity 
-            style={styles.registerButton} 
-            onPress={() => router.push('/auth/register')}
+            style={styles.loginButton} 
+            onPress={() => router.push('/auth/login')}
           >
-            <Text style={styles.registerButtonText}>Create an Account</Text>
-            <MaterialCommunityIcons name="arrow-right" size={20} color="#FFFFFF" />
+            <LinearGradient
+              colors={['#4CD964', '#5AC8FA']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.loginButtonGradient}
+            >
+              <Text style={styles.loginButtonText}>Login to Account</Text>
+            </LinearGradient>
           </TouchableOpacity>
-        </LinearGradient>
-      </View>
-      
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>© 2025 KN Holdings. All rights reserved.</Text>
-      </View>
+        </View>
+        
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>© 2025 KN Holdings. All rights reserved.</Text>
+        </View>
+      </LinearGradient>
     </SafeAreaView>
   );
 };
@@ -120,23 +157,28 @@ const Index = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+  },
+  gradientBackground: {
+    flex: 1,
+    justifyContent: 'space-between',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#1a1a2e',
   },
   headerContainer: {
-    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
-    paddingVertical: 20,
+    marginTop: Platform.OS === 'android' ? StatusBar.currentHeight : 20,
+    paddingVertical: 40,
     alignItems: 'center',
   },
   logo: {
-    width: 300,
-    height: 300,
-    borderRadius: 40
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   contentContainer: {
     paddingHorizontal: 24,
@@ -144,62 +186,50 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'Outfit_700Bold',
-    fontSize: 32,
-    color: '#1a1a2e',
-    marginBottom: 8,
+    fontSize: 36,
+    color: '#FFFFFF',
+    marginBottom: 12,
     textAlign: 'center',
   },
   subtitle: {
     fontFamily: 'Outfit_400Regular',
-    fontSize: 16,
-    color: '#4a4a68',
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
     marginBottom: 40,
   },
   buttonContainer: {
-    paddingHorizontal: 24,
-    marginTop: 'auto',
-    marginBottom: 24,
+    paddingHorizontal: 32,
+    width: '100%',
+    marginBottom: 40,
   },
   loginButton: {
-    backgroundColor: 'transparent',
-    paddingVertical: 15,
-    borderRadius: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.27,
+    shadowRadius: 4.65,
+  },
+  loginButtonGradient: {
+    paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#007AFF',
+    borderRadius: 12,
   },
   loginButtonText: {
-    color: '#007AFF',
-    fontFamily: 'Outfit_600SemiBold',
-    fontSize: 16,
-  },
-  registerButtonGradient: {
-    borderRadius: 10,
-    marginBottom: 16,
-  },
-  registerButton: {
-    paddingVertical: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  registerButtonText: {
     color: '#FFFFFF',
     fontFamily: 'Outfit_600SemiBold',
-    fontSize: 16,
-    marginRight: 8,
+    fontSize: 18,
   },
   footer: {
     alignItems: 'center',
-    paddingBottom: 20,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
   },
   footerText: {
     fontFamily: 'Outfit_400Regular',
     fontSize: 12,
-    color: '#8E8E93',
+    color: 'rgba(255, 255, 255, 0.6)',
   },
 });
 
