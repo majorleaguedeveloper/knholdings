@@ -33,16 +33,16 @@ import {
 import { API_BASE_URL } from '../apiConfig';
 
 const MemberRankings = () => {
-  const {userToken} = useContext(AuthContext);
+  const { userToken } = useContext(AuthContext);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [members, setMembers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState('all'); // 'all', 'top10', 'top25', 'top50'
-  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' or 'asc'
+  const [filter, setFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [totalShares, setTotalShares] = useState(0);
   const [totalShareValue, setTotalShareValue] = useState(0);
-  const [sharePrice, setSharePrice] = useState(10); // Default share price
+  const [sharePrice, setSharePrice] = useState(10);
   const router = useRouter();
 
   // Load fonts
@@ -53,46 +53,39 @@ const MemberRankings = () => {
     Outfit_700Bold
   });
 
-  // Create a memoized fetch function to avoid recreation on every render
+  // Fetch member rankings and share stats in the same style as AdminSharesScreen
   const fetchMemberRankings = useCallback(async () => {
-    console.log(userToken);
-    if (!userToken) {
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
+    setLoading(true);
     setRefreshing(true);
     try {
-      const config = {
-        headers: {
-          Authorization: `Bearer ${userToken}`,
-        },
-      };
-      // Get all data using reliable endpoints
-      const [membersRes, sharesStatsRes] = await Promise.all([
-        axios.get(`${API_BASE_URL}/admin/members`, config),
-        axios.get(`${API_BASE_URL}/shares/stats`, config),
-      ]);
-      // Debug logging
-      console.log('Members:', membersRes.data);
-      console.log('SharesStats:', sharesStatsRes.data);
-      let membersList = [];
-      if (membersRes.data?.data && sharesStatsRes.data?.data) {
-        const allMembers = membersRes.data.data || [];
-        const sharesData = sharesStatsRes.data.data || {};
+      // Fetch all members
+      const membersRes = await axios.get(`${API_BASE_URL}/admin/members`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      // Fetch share stats (topMembers contains correct individual shares)
+      const sharesStatsRes = await axios.get(`${API_BASE_URL}/shares/stats`, {
+        headers: { Authorization: `Bearer ${userToken}` },
+      });
+      const membersData = membersRes.data;
+      const sharesStatsData = sharesStatsRes.data;
+      if (membersData.success && sharesStatsData.success) {
+        const allMembers = membersData.data || [];
+        const sharesData = sharesStatsData.data || {};
         const topMembers = sharesData.topMembers || [];
         const currentSharePrice = sharesData.sharePrice || 10;
         setSharePrice(currentSharePrice);
         setTotalShares(sharesData.totalShares || 0);
         setTotalShareValue(sharesData.totalValue || 0);
+        // Map topMembers by _id (not id) for correct matching
         const topMembersMap = new Map();
         topMembers.forEach(member => {
-          if (member && member.id) {
-            topMembersMap.set(member.id, member);
+          if (member && member._id) {
+            topMembersMap.set(member._id, member);
           }
         });
-        membersList = allMembers.map(member => {
-          const topMemberData = topMembersMap.get(member.id);
+        // Merge topMembers data into allMembers by _id
+        const membersList = allMembers.map(member => {
+          const topMemberData = topMembersMap.get(member._id);
           const shares = topMemberData ? topMemberData.totalShares : 0;
           return {
             ...member,
@@ -102,6 +95,8 @@ const MemberRankings = () => {
         });
         membersList.sort((a, b) => b.totalShares - a.totalShares);
         setMembers(membersList);
+      } else {
+        throw new Error('Failed to load member or share stats');
       }
     } catch (error) {
       if (error.response) {
@@ -119,13 +114,7 @@ const MemberRankings = () => {
   }, [userToken]);
 
   useEffect(() => {
-    // First try to get cached data
-    const loadCachedData = async () => {     
-      // Only fetch if userToken is available
-      if (userToken) fetchMemberRankings();
-    };
-    
-    loadCachedData();
+    if (userToken) fetchMemberRankings();
   }, [userToken, fetchMemberRankings]);
 
   const onRefresh = useCallback(() => {
@@ -266,13 +255,11 @@ const MemberRankings = () => {
               <FontAwesome5 name="chart-line" size={20} color="#FFF" />
             </View>
             <View>
-              <Text style={styles.valueCardLabel}>Total Share Value</Text>
+              <Text style={styles.valueCardLabel}>Total Share Purchase Price</Text>
               <Text style={styles.valueCardAmount}>{formatCurrency(totalShareValue)}</Text>
             </View>
           </View>
-          <View style={styles.shareInfoBadge}>
-            <Text style={styles.shareInfoText}>${sharePrice}/share</Text>
-          </View>
+          
         </LinearGradient>
       </View>
 

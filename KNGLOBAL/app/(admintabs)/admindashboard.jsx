@@ -65,9 +65,9 @@ const AdminDashboard = () => {
     try {
       // Make parallel API calls to get all necessary data
       const [membersRes, sharesStatsRes, announcementsRes] = await Promise.all([
-        axios.get('http://192.168.151.253:5000/api/admin/members', config),
-        axios.get('http://192.168.151.253:5000/api/shares/stats',config),
-        axios.get('http://192.168.151.253:5000/api/admin/announcements', config),
+        axios.get('http://192.168.234.253:5000/api/admin/members', config),
+        axios.get('http://192.168.234.253:5000/api/shares/stats',config),
+        axios.get('http://192.168.234.253:5000/api/admin/announcements', config),
       ]);
 
       // Process the data
@@ -216,7 +216,7 @@ const AdminDashboard = () => {
 
         {/* Share Value Card */}
         <TouchableOpacity
-          onPress={() => router.push('/adminpages/ManageShares')}
+          onPress={() => router.push('/adminpages/AdminSharesScreen')}
           style={styles.valueCardContainer}
         >
           <LinearGradient
@@ -230,7 +230,7 @@ const AdminDashboard = () => {
                 <FontAwesome5 name="chart-line" size={20} color="#FFF" />
               </View>
               <View>
-                <Text style={styles.valueCardLabel}>Total Share Value</Text>
+                <Text style={styles.valueCardLabel}>Total Share Purchase Price</Text>
                 <Text style={styles.valueCardAmount}>{formatCurrency(dashboardData.totalShareValue)}</Text>
               </View>
             </View>
@@ -406,6 +406,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F7F9FC',
+    paddingBottom: 50,
   },
   scrollView: {
     flex: 1,

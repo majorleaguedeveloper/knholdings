@@ -171,7 +171,7 @@ const AdminSharesScreen = () => {
       <Animated.View style={[styles.summaryCard, styles.cardShadow, { backgroundColor: '#d1fae5', transform: [{ scale: fadeAnim }] }]}> 
         <Ionicons name="cash" size={28} color="#059669" />
         <Text style={styles.summaryValue}>{formatCurrency(stats?.totalValue)}</Text>
-        <Text style={styles.summaryLabel}>Total Purchase Value</Text>
+        <Text style={styles.summaryLabel}>Total Purchase Price</Text>
       </Animated.View>
     </View>
   );
@@ -507,6 +507,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F7F9FC',
+    paddingBottom: 50
   },
   headerContainer: {
     paddingTop: Platform.OS === 'ios' ? 0 : 25,

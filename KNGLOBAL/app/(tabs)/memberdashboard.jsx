@@ -66,16 +66,17 @@ const MemberDashboard = () => {
       };
     try {           
       const [profileRes, sharesRes, announcementsRes, monthlySharesRes] = await Promise.all([
-        axios.get('http://192.168.151.253:5000/api/member/profile', config),
-        axios.get('http://192.168.151.253:5000/api/member/shares', config),
-        axios.get('http://192.168.151.253:5000/api/member/announcements', config),
-        axios.get('http://192.168.151.253:5000/api/member/shares/monthly', config)
+        axios.get('http://192.168.234.253:5000/api/member/profile', config),
+        axios.get('http://192.168.234.253:5000/api/member/shares', config),
+        axios.get('http://192.168.234.253:5000/api/member/announcements', config),
+        axios.get('http://192.168.234.253:5000/api/member/shares/monthly', config)
       ]);
 
       const newData = {
         profile: profileRes.data.data,
         totalShares: sharesRes.data.totalShares,
         sharesList: sharesRes.data.data.slice(0, 3),
+        allAnnouncements: announcementsRes.data.data,
         announcements: announcementsRes.data.data.slice(0, 3),
         monthlyShares: monthlySharesRes.data.data.slice(0, 6)
       };
@@ -152,7 +153,7 @@ const MemberDashboard = () => {
         return new Date(a.month) - new Date(b.month);
       });
       
-      const oldest = sortedData[0].totalShares;
+      const oldest = sortedData[sortedData.length - 2].totalShares;
       const newest = sortedData[sortedData.length - 1].totalShares;
       
       if (oldest > 0) {
@@ -238,9 +239,9 @@ const MemberDashboard = () => {
             </View>
             <View style={styles.statsTextContainer}>
               <Text style={styles.statsValue}>
-                {statsData.growthPercentage >= 0 ? '+' : ''}{statsData.growthPercentage.toFixed(1)}%
+                {statsData.averageShares.toFixed(2)}
               </Text>
-              <Text style={styles.statsLabel}>Growth</Text>
+              <Text style={styles.statsLabel}>Average Monthly Shares</Text>
             </View>
           </View>
           
@@ -249,7 +250,7 @@ const MemberDashboard = () => {
               <Ionicons name="notifications" size={22} color="red" />
             </View>
             <View style={styles.statsTextContainer}>
-              <Text style={styles.statsValue}>{dashboardData.announcements.length}</Text>
+              <Text style={styles.statsValue}>{dashboardData.allAnnouncements.length}</Text>
               <Text style={styles.statsLabel}>Alerts</Text>
             </View>
           </View>
@@ -430,6 +431,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f5f7fa',
+    paddingBottom: 50,
   },
   scrollView: {
     flex: 1,
@@ -455,7 +457,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#3498db',
     overflow: 'hidden',
-    height: 120,
+    height: 140,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },

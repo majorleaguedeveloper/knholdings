@@ -35,7 +35,7 @@ export default function TabLayout() {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'profile') {
             iconName = focused ? 'person' : 'person-outline';
-          } else if (route.name === 'transactions') {
+          } else if (route.name === 'AdminSharesScreen') {
             iconName = focused ? 'wallet' : 'wallet-outline';
           } else if (route.name === 'settings') {
             iconName = focused ? 'settings' : 'settings-outline';
@@ -78,7 +78,13 @@ export default function TabLayout() {
           }} 
         />
 
-
+        <Tabs.Screen 
+          name="AdminSharesScreen" 
+          options={{ 
+            title: 'Shares',
+            tabBarLabel: 'Shares'
+          }} 
+        />
 
       <Tabs.Screen 
         name="profile" 

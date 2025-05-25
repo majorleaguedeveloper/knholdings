@@ -34,7 +34,7 @@ import {
 } from '@expo-google-fonts/outfit';
 import AuthContext from '../../contexts/Authcontext';
 
-const BASE_URL = 'http://192.168.151.253:5000';
+const BASE_URL = 'http://192.168.234.253:5000';
 
 const ManageMembers = () => {
   const { userToken } = useContext(AuthContext);

@@ -26,11 +26,11 @@ export default function TabLayout() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
           
-          if (route.name === 'admindashboard') {
+          if (route.name === 'memberdashboard') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'profile') {
             iconName = focused ? 'person' : 'person-outline';
-          } else if (route.name === 'transactions') {
+          } else if (route.name === 'sharehistory') {
             iconName = focused ? 'wallet' : 'wallet-outline';
           } else if (route.name === 'settings') {
             iconName = focused ? 'settings' : 'settings-outline';
@@ -68,16 +68,24 @@ export default function TabLayout() {
         <Tabs.Screen 
           name="memberdashboard" 
           options={{ 
-            title: 'Home',
+            title: 'home',
             tabBarLabel: 'Home'
           }} 
         />
+
+        <Tabs.Screen 
+          name="sharehistory" 
+          options={{ 
+            title: 'myShares',
+            tabBarLabel: 'MyShares'
+          }} 
+        />        
 
 
       <Tabs.Screen 
         name="profile" 
         options={{ 
-          title: 'Profile',
+          title: 'profile',
           tabBarLabel: 'Profile'
         }} 
       />

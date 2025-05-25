@@ -94,9 +94,6 @@ const Profile = () => {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
-        </View>
         
         <View style={styles.profileContainer}>
           <View style={styles.avatarContainer}>
