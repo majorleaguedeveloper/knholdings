@@ -45,7 +45,12 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUserToken(token);
       setUserData(user);
-      router.push('/(tabs)/dashboard');
+      if (user.role === 'admin') {
+        router.push('/(admintabs)/admindashboard');
+      } else {
+        router.push('/(tabs)/memberdashboard');
+      }
+      
       return response.data;
     } catch (error) {
       setError(error.response?.data?.message || 'Login failed');

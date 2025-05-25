@@ -66,10 +66,10 @@ const MemberDashboard = () => {
       };
     try {           
       const [profileRes, sharesRes, announcementsRes, monthlySharesRes] = await Promise.all([
-        axios.get('http://192.168.234.253:5000/api/member/profile', config),
-        axios.get('http://192.168.234.253:5000/api/member/shares', config),
-        axios.get('http://192.168.234.253:5000/api/member/announcements', config),
-        axios.get('http://192.168.234.253:5000/api/member/shares/monthly', config)
+        axios.get('https://knholdingsbackend.onrender.com/api/member/profile', config),
+        axios.get('https://knholdingsbackend.onrender.com/api/member/shares', config),
+        axios.get('https://knholdingsbackend.onrender.com/api/member/announcements', config),
+        axios.get('https://knholdingsbackend.onrender.com/api/member/shares/monthly', config)
       ]);
 
       const newData = {

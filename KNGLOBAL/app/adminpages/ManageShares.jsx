@@ -29,7 +29,7 @@ import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import AuthContext from '../../contexts/Authcontext';
 
-const API_BASE_URL = 'http://192.168.234.253:5000/api';
+const API_BASE_URL = 'https://knholdingsbackend.onrender.com/api';
 
 const ManageShares = () => {
   // Load fonts

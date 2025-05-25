@@ -8,7 +8,6 @@ import {
   StyleSheet, 
   SafeAreaView, 
   RefreshControl,
-  Dimensions,
   Platform
 } from 'react-native';
 import axios from 'axios';
@@ -30,8 +29,34 @@ import {
 } from '@expo-google-fonts/outfit';
 import AuthContext from '../../contexts/Authcontext';
 
-// Get device dimensions
-const { width } = Dimensions.get('window');
+// ErrorBoundary component to catch errors and show fallback UI
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    // You can log error to a service here
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+          <Text style={{ color: '#e74c3c', fontSize: 18, marginBottom: 10 }}>Something went wrong.</Text>
+          <Text style={{ color: '#888', fontSize: 14 }}>{this.state.error?.toString()}</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const AdminDashboard = () => {
   const { userToken } = useContext(AuthContext);
@@ -57,17 +82,17 @@ const AdminDashboard = () => {
   // Create a memoized fetch function to avoid recreation on every render
   const fetchDashboardData = useCallback(async () => {
     setRefreshing(true);
-      const config = {
-        headers: {
-          Authorization: `Bearer ${userToken}`,
-        },
-      };
+    const config = {
+      headers: {
+        Authorization: `Bearer ${userToken}`,
+      },
+    };
     try {
       // Make parallel API calls to get all necessary data
       const [membersRes, sharesStatsRes, announcementsRes] = await Promise.all([
-        axios.get('http://192.168.234.253:5000/api/admin/members', config),
-        axios.get('http://192.168.234.253:5000/api/shares/stats',config),
-        axios.get('http://192.168.234.253:5000/api/admin/announcements', config),
+        axios.get('https://knholdingsbackend.onrender.com/api/admin/members', config),
+        axios.get('https://knholdingsbackend.onrender.com/api/shares/stats',config),
+        axios.get('https://knholdingsbackend.onrender.com/api/admin/announcements', config),
       ]);
 
       // Process the data
@@ -87,7 +112,7 @@ const AdminDashboard = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [userToken]);
 
   useEffect(() => {
 
@@ -134,271 +159,274 @@ const AdminDashboard = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#3498db']}
-            tintColor="#3498db"
-          />
-        }
-      >
-        {/* Header with background gradient */}
-        <LinearGradient
-          colors={['#4158D0', '#3498db', '#3498db']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.headerContainer}
+    <ErrorBoundary>
+      <SafeAreaView style={styles.container}>
+        <ScrollView 
+          style={styles.scrollView}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#3498db']}
+              tintColor="#3498db"
+            />
+          }
         >
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.headerTitle}>Admin Dashboard</Text>
-              <Text style={styles.headerSubtitle}>KN Holdings Cooperative</Text>
-            </View>
-            {/* 
-            <TouchableOpacity 
-              style={styles.refreshButton}
-              onPress={onRefresh}
-              >
-              <MaterialIcons name="refresh" size={22} color="#FFF" />
-            </TouchableOpacity>
-            */}
-          </View>
-        </LinearGradient>
-
-        {/* Main Stats Cards */}
-        <View style={styles.mainStatsContainer}>
-          {/* Total Members Card */}
-          <TouchableOpacity 
-            onPress={() => router.push('/adminpages/ManageMembers')}
-            style={styles.statCardWrapper}
-          >
-            <LinearGradient
-              colors={['#3498db', '#4158D0']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statCard}
-            >
-              <View style={styles.statIconContainer}>
-                <FontAwesome5 name="users" size={24} color="#FFF" />
-              </View>
-              <View style={styles.statContent}>
-                <Text style={styles.statValue}>{dashboardData.totalMembers}</Text>
-                <Text style={styles.statLabel}>Total Members</Text>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Total Shares Card */}
-          <TouchableOpacity
-            onPress={() => router.push('/adminpages/ManageShares')}
-            style={styles.statCardWrapper}
-          >
-            <LinearGradient
-              colors={['#3498db', '#3498db']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statCard}
-            >
-              <View style={styles.statIconContainer}>
-                <MaterialCommunityIcons name="file-document-multiple" size={24} color="#FFF" />
-              </View>
-              <View style={styles.statContent}>
-                <Text style={styles.statValue}>{dashboardData.totalShares}</Text>
-                <Text style={styles.statLabel}>Total Shares</Text>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-
-        {/* Share Value Card */}
-        <TouchableOpacity
-          onPress={() => router.push('/adminpages/AdminSharesScreen')}
-          style={styles.valueCardContainer}
-        >
+          {/* Header with background gradient */}
           <LinearGradient
-            colors={['#FF6B6B', '#FF8E53']}
+            colors={['#4158D0', '#3498db', '#3498db']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={styles.valueCard}
+            style={styles.headerContainer}
           >
-            <View style={styles.valueCardContent}>
-              <View style={styles.valueIconContainer}>
-                <FontAwesome5 name="chart-line" size={20} color="#FFF" />
-              </View>
+            <View style={styles.header}>
               <View>
-                <Text style={styles.valueCardLabel}>Total Share Purchase Price</Text>
-                <Text style={styles.valueCardAmount}>{formatCurrency(dashboardData.totalShareValue)}</Text>
+                <Text style={styles.headerTitle}>Admin Dashboard</Text>
+                <Text style={styles.headerSubtitle}>KN Holdings Cooperative</Text>
               </View>
+              {/* 
+              <TouchableOpacity 
+                style={styles.refreshButton}
+                onPress={onRefresh}
+                >
+                <MaterialIcons name="refresh" size={22} color="#FFF" />
+              </TouchableOpacity>
+              */}
             </View>
-            <Feather name="arrow-right" size={20} color="#FFF" />
           </LinearGradient>
-        </TouchableOpacity>
 
-        {/* Top Members Section */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <FontAwesome5 name="trophy" size={18} color="#3498db" />
-              <Text style={styles.sectionTitle}>Top Members</Text>
-            </View>
+          {/* Main Stats Cards */}
+          <View style={styles.mainStatsContainer}>
+            {/* Total Members Card */}
             <TouchableOpacity 
-              onPress={() => router.push('/adminpages/MemberRankings')}
-              style={styles.viewAllButton}
-            >
-              <Text style={styles.viewAllText}>View All</Text>
-              <MaterialIcons name="chevron-right" size={18} color="#3498db" />
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.topMembersContainer}>
-            {dashboardData.topMembers && dashboardData.topMembers.length > 0 ? (
-              dashboardData.topMembers.slice(0, 3).map((member, index) => (
-                <View key={index} style={styles.topMemberItem}>
-                  <View style={[styles.memberRankBadge, 
-                    index === 0 ? styles.firstRank : 
-                    index === 1 ? styles.secondRank : 
-                    styles.thirdRank
-                  ]}>
-                    <Text style={styles.memberRankText}>{index + 1}</Text>
-                  </View>
-                  <View style={styles.memberInfo}>
-                    <Text style={styles.memberName}>{member.name}</Text>
-                    <Text style={styles.memberEmail}>{member.email}</Text>
-                  </View>
-                  <View style={styles.memberSharesContainer}>
-                    <Text style={styles.memberSharesValue}>{member.totalShares}</Text>
-                    <Text style={styles.memberSharesLabel}>shares</Text>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.noDataText}>No member data available</Text>
-            )}
-          </View>
-        </View>
-        
-        {/* Announcements Section */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <MaterialIcons name="announcement" size={20} color="#3498db" />
-              <Text style={styles.sectionTitle}>Recent Announcements</Text>
-            </View>
-            <TouchableOpacity 
-              onPress={() => router.push('/adminpages/ManageAnnouncements')}
-              style={styles.viewAllButton}
-            >
-              <Text style={styles.viewAllText}>Manage</Text>
-              <MaterialIcons name="chevron-right" size={18} color="#3498db" />
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.announcementsContainer}>
-            {dashboardData.announcements && dashboardData.announcements.length > 0 ? (
-              dashboardData.announcements.map((announcement, index) => (
-                <View key={index} style={styles.announcementItem}>
-                  <View style={[
-                    styles.announcementIconContainer,
-                    announcement.importance === 'high' ? styles.highImportance :
-                    announcement.importance === 'medium' ? styles.mediumImportance :
-                    styles.lowImportance
-                  ]}>
-                    <Ionicons 
-                      name={announcement.importance === 'high' ? "warning" : "megaphone"} 
-                      size={18} 
-                      color="#FFF" 
-                    />
-                  </View>
-                  <View style={styles.announcementContent}>
-                    <Text style={styles.announcementTitle}>{announcement.title}</Text>
-                    {announcement.date && (
-                      <Text style={styles.announcementDate}>
-                        {new Date(announcement.createdAt || announcement.date).toLocaleDateString()}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              ))
-            ) : (
-              <Text style={styles.noDataText}>No recent announcements</Text>
-            )}
-          </View>
-        </View>
-        
-        {/* Quick Actions */}
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <MaterialIcons name="dashboard-customize" size={20} color="#3498db" />
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
-            </View>
-          </View>
-          
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity 
-              style={styles.actionCard}
               onPress={() => router.push('/adminpages/ManageMembers')}
+              style={styles.statCardWrapper}
             >
               <LinearGradient
                 colors={['#3498db', '#4158D0']}
-                style={styles.actionCardGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCard}
               >
-                <FontAwesome5 name="user-cog" size={24} color="#FFF" />
+                <View style={styles.statIconContainer}>
+                  <FontAwesome5 name="users" size={24} color="#FFF" />
+                </View>
+                <View style={styles.statContent}>
+                  <Text style={styles.statValue}>{dashboardData.totalMembers}</Text>
+                  <Text style={styles.statLabel}>Total Members</Text>
+                </View>
               </LinearGradient>
-              <Text style={styles.actionCardText}>Manage Members</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionCard}
+
+            {/* Total Shares Card */}
+            <TouchableOpacity
               onPress={() => router.push('/adminpages/ManageShares')}
+              style={styles.statCardWrapper}
             >
               <LinearGradient
-                colors={['#4CD964', '#2ECC71']}
-                style={styles.actionCardGradient}
+                colors={['#3498db', '#3498db']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCard}
               >
-                <MaterialCommunityIcons name="file-document-edit" size={24} color="#FFF" />
+                <View style={styles.statIconContainer}>
+                  <MaterialCommunityIcons name="file-document-multiple" size={24} color="#FFF" />
+                </View>
+                <View style={styles.statContent}>
+                  <Text style={styles.statValue}>{dashboardData.totalShares}</Text>
+                  <Text style={styles.statLabel}>Total Shares</Text>
+                </View>
               </LinearGradient>
-              <Text style={styles.actionCardText}>Manage Shares</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => router.push('/adminpages/ManageAnnouncements')}
-            >
-              <LinearGradient
-                colors={['#FF9D42', '#FF8130']}
-                style={styles.actionCardGradient}
-              >
-                <MaterialIcons name="campaign" size={24} color="#FFF" />
-              </LinearGradient>
-              <Text style={styles.actionCardText}>Announcements</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => router.push('/adminpages/AdminSharesScreen')}
-            >
-              <LinearGradient
-                colors={['#FF6B6B', '#FF8E53']}
-                style={styles.actionCardGradient}
-              >
-                <FontAwesome5 name="chart-pie" size={22} color="#FFF" />
-              </LinearGradient>
-              <Text style={styles.actionCardText}>Share Distribution</Text>
             </TouchableOpacity>
           </View>
-        </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>KN Holdings Cooperative</Text>
-          <Text style={styles.copyrightText}>© {new Date().getFullYear()} All Rights Reserved</Text>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+          {/* Share Value Card */}
+          <TouchableOpacity
+            onPress={() => router.push('/adminpages/AdminSharesScreen')}
+            style={styles.valueCardContainer}
+          >
+            <LinearGradient
+              colors={['#FF6B6B', '#FF8E53']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.valueCard}
+            >
+              <View style={styles.valueCardContent}>
+                <View style={styles.valueIconContainer}>
+                  <FontAwesome5 name="chart-line" size={20} color="#FFF" />
+                </View>
+                <View>
+                  <Text style={styles.valueCardLabel}>Total Share Purchase Price</Text>
+                  <Text style={styles.valueCardAmount}>{formatCurrency(dashboardData.totalShareValue)}</Text>
+                </View>
+              </View>
+              <Feather name="arrow-right" size={20} color="#FFF" />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Top Members Section */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <FontAwesome5 name="trophy" size={18} color="#3498db" />
+                <Text style={styles.sectionTitle}>Top Members</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => router.push('/adminpages/MemberRankings')}
+                style={styles.viewAllButton}
+              >
+                <Text style={styles.viewAllText}>View All</Text>
+                <MaterialIcons name="chevron-right" size={18} color="#3498db" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.topMembersContainer}>
+              {dashboardData.topMembers && dashboardData.topMembers.length > 0 ? (
+                dashboardData.topMembers.slice(0, 3).map((member, index) => (
+                  <View key={index} style={styles.topMemberItem}>
+                    <View style={[
+                      styles.memberRankBadge,
+                      index === 0 ? styles.firstRank :
+                      index === 1 ? styles.secondRank :
+                      styles.thirdRank
+                    ]}>
+                      <Text style={styles.memberRankText}>{index + 1}</Text>
+                    </View>
+                    <View style={styles.memberInfo}>
+                      <Text style={styles.memberName}>{member.name}</Text>
+                      <Text style={styles.memberEmail}>{member.email}</Text>
+                    </View>
+                    <View style={styles.memberSharesContainer}>
+                      <Text style={styles.memberSharesValue}>{member.totalShares}</Text>
+                      <Text style={styles.memberSharesLabel}>shares</Text>
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noDataText}>No member data available</Text>
+              )}
+            </View>
+          </View>
+          
+          {/* Announcements Section */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <MaterialIcons name="announcement" size={20} color="#3498db" />
+                <Text style={styles.sectionTitle}>Recent Announcements</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => router.push('/adminpages/ManageAnnouncements')}
+                style={styles.viewAllButton}
+              >
+                <Text style={styles.viewAllText}>Manage</Text>
+                <MaterialIcons name="chevron-right" size={18} color="#3498db" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.announcementsContainer}>
+              {dashboardData.announcements && dashboardData.announcements.length > 0 ? (
+                dashboardData.announcements.map((announcement, index) => (
+                  <View key={index} style={styles.announcementItem}>
+                    <View style={[
+                      styles.announcementIconContainer,
+                      announcement.importance === 'high' ? styles.highImportance :
+                      announcement.importance === 'medium' ? styles.mediumImportance :
+                      styles.lowImportance
+                    ]}>
+                      <Ionicons
+                        name={announcement.importance === 'high' ? "warning" : "megaphone"}
+                        size={18}
+                        color="#FFF"
+                      />
+                    </View>
+                    <View style={styles.announcementContent}>
+                      <Text style={styles.announcementTitle}>{announcement.title}</Text>
+                      {announcement.date && (
+                        <Text style={styles.announcementDate}>
+                          {new Date(announcement.createdAt || announcement.date).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noDataText}>No recent announcements</Text>
+              )}
+            </View>
+          </View>
+          
+          {/* Quick Actions */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <MaterialIcons name="dashboard-customize" size={20} color="#3498db" />
+                <Text style={styles.sectionTitle}>Quick Actions</Text>
+              </View>
+            </View>
+            
+            <View style={styles.actionsGrid}>
+              <TouchableOpacity 
+                style={styles.actionCard}
+                onPress={() => router.push('/adminpages/ManageMembers')}
+              >
+                <LinearGradient
+                  colors={['#3498db', '#4158D0']}
+                  style={styles.actionCardGradient}
+                >
+                  <FontAwesome5 name="user-cog" size={24} color="#FFF" />
+                </LinearGradient>
+                <Text style={styles.actionCardText}>Manage Members</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.actionCard}
+                onPress={() => router.push('/adminpages/ManageShares')}
+              >
+                <LinearGradient
+                  colors={['#4CD964', '#2ECC71']}
+                  style={styles.actionCardGradient}
+                >
+                  <MaterialCommunityIcons name="file-document-edit" size={24} color="#FFF" />
+                </LinearGradient>
+                <Text style={styles.actionCardText}>Manage Shares</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.actionCard}
+                onPress={() => router.push('/adminpages/ManageAnnouncements')}
+              >
+                <LinearGradient
+                  colors={['#FF9D42', '#FF8130']}
+                  style={styles.actionCardGradient}
+                >
+                  <MaterialIcons name="campaign" size={24} color="#FFF" />
+                </LinearGradient>
+                <Text style={styles.actionCardText}>Announcements</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.actionCard}
+                onPress={() => router.push('/adminpages/AdminSharesScreen')}
+              >
+                <LinearGradient
+                  colors={['#FF6B6B', '#FF8E53']}
+                  style={styles.actionCardGradient}
+                >
+                  <FontAwesome5 name="chart-pie" size={22} color="#FFF" />
+                </LinearGradient>
+                <Text style={styles.actionCardText}>Share Distribution</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>KN Holdings Cooperative</Text>
+            <Text style={styles.copyrightText}>© {new Date().getFullYear()} All Rights Reserved</Text>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </ErrorBoundary>
   );
 };
 

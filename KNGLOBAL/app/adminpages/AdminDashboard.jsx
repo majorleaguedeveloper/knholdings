@@ -65,9 +65,9 @@ const AdminDashboard = () => {
     try {
       // Make parallel API calls to get all necessary data
       const [membersRes, sharesStatsRes, announcementsRes] = await Promise.all([
-        axios.get('http://192.168.234.253:5000/api/admin/members', config),
-        axios.get('http://192.168.234.253:5000/api/shares/stats',config),
-        axios.get('http://192.168.234.253:5000/api/admin/announcements', config),
+        axios.get('https://knholdingsbackend.onrender.com/api/admin/members', config),
+        axios.get('https://knholdingsbackend.onrender.com/api/shares/stats',config),
+        axios.get('https://knholdingsbackend.onrender.com/api/admin/announcements', config),
       ]);
 
       // Process the data

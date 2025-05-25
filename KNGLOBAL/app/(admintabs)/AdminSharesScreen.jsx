@@ -51,7 +51,7 @@ const AdminSharesScreen = () => {
     Outfit_700Bold
   });
 
-  const API_BASE_URL = 'http://192.168.234.253:5000/api/shares';
+  const API_BASE_URL = 'https://knholdingsbackend.onrender.com/api/shares';
 
   // Generate years array (current year - 5 to current year + 1)
   const currentYear = new Date().getFullYear();
