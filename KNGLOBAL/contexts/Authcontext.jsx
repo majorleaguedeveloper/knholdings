@@ -1,16 +1,62 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../app/apiConfig';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with true
   const [userToken, setUserToken] = useState(null);
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Load stored auth data on app start
+  useEffect(() => {
+    loadStoredAuth();
+  }, []);
+
+  const loadStoredAuth = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('userToken');
+      const storedUserData = await AsyncStorage.getItem('userData');
+      
+      if (storedToken && storedUserData) {
+        const parsedUserData = JSON.parse(storedUserData);
+        setUserToken(storedToken);
+        setUserData(parsedUserData);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        
+        // Verify token is still valid
+        try {
+          await axios.get(`${API_BASE_URL}/auth/me`);
+        } catch (error) {
+          // Token invalid, clear stored data
+          await clearStoredAuth();
+        }
+      }
+    } catch (error) {
+      console.log('Error loading stored auth:', error);
+      await clearStoredAuth();
+    } finally {
+      setIsLoading(false);
+      setIsInitialized(true);
+    }
+  };
+
+  const clearStoredAuth = async () => {
+    try {
+      await AsyncStorage.multiRemove(['userToken', 'userData']);
+      setUserToken(null);
+      setUserData(null);
+      delete axios.defaults.headers.common['Authorization'];
+    } catch (error) {
+      console.log('Error clearing stored auth:', error);
+    }
+  };
 
   // Register user
   const register = async (name, email, phone, password) => {
@@ -42,13 +88,20 @@ export const AuthProvider = ({ children }) => {
         password
       });
       const { token, user } = response.data;
+      
+      // Store auth data
+      await AsyncStorage.setItem('userToken', token);
+      await AsyncStorage.setItem('userData', JSON.stringify(user));
+      
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUserToken(token);
       setUserData(user);
+      
+      // Navigate based on role
       if (user.role === 'admin') {
-        router.push('/(admintabs)/admindashboard');
+        router.replace('/(admintabs)/admindashboard');
       } else {
-        router.push('/(tabs)/memberdashboard');
+        router.replace('/(tabs)/memberdashboard');
       }
       
       return response.data;
@@ -61,12 +114,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout user
-  const logout = () => {
+  const logout = async () => {
     setIsLoading(true);
     try {
-      delete axios.defaults.headers.common['Authorization'];
-      setUserToken(null);
-      setUserData(null);
+      await clearStoredAuth();
+      router.replace('/');
     } catch (error) {
       console.log('Error logging out:', error);
     } finally {
@@ -76,19 +128,21 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user is authenticated
   const isAuthenticated = () => {
-    return !!userToken;
+    return !!userToken && !!userData;
   };
 
   // Get user profile
   const getUserProfile = async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/auth/me`);
-      setUserData(response.data.data);
+      const updatedUserData = response.data.data;
+      setUserData(updatedUserData);
+      await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
       return response.data;
     } catch (error) {
       console.log('Error fetching user profile:', error);
       if (error.response?.status === 401) {
-        logout();
+        await logout();
       }
       throw error;
     }
@@ -101,6 +155,7 @@ export const AuthProvider = ({ children }) => {
         userToken,
         userData,
         error,
+        isInitialized,
         register,
         login,
         logout,

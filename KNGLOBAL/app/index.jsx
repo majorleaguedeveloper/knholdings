@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Image, SafeAreaView, Platform
 import { useRouter } from 'expo-router';
 import { useFonts, Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { LinearGradient } from 'expo-linear-gradient';
-import AuthContext from '../contexts/Authcontext'; // Adjust the path if necessary
+import AuthContext from '../contexts/Authcontext';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Prevent auto-hiding of splash screen
@@ -11,9 +11,9 @@ SplashScreen.preventAutoHideAsync();
 
 const Index = () => {
   const router = useRouter();
-  const { isAuthenticated, userData } = useContext(AuthContext);
+  const { isAuthenticated, userData, isInitialized, isLoading } = useContext(AuthContext);
   const [appIsReady, setAppIsReady] = useState(false);
-  const [error, setError] = useState(null);
+  const [hasNavigated, setHasNavigated] = useState(false);
 
   // Load custom fonts
   const [fontsLoaded] = useFonts({
@@ -26,17 +26,12 @@ const Index = () => {
   useEffect(() => {
     async function prepare() {
       try {
-        // Pre-load fonts, make API calls, etc.
         // Wait for fonts to load
-        await new Promise(resolve => {
-          if (fontsLoaded) {
-            resolve();
-          }
-        });
+        if (fontsLoaded) {
+          setAppIsReady(true);
+        }
       } catch (e) {
         console.warn('Error preparing app:', e);
-      } finally {
-        // Tell the application to render
         setAppIsReady(true);
       }
     }
@@ -45,9 +40,9 @@ const Index = () => {
   }, [fontsLoaded]);
 
   useEffect(() => {
-    // Hide splash screen once app is ready
+    // Hide splash screen once app is ready and auth is initialized
     async function hideSplash() {
-      if (appIsReady) {
+      if (appIsReady && isInitialized) {
         try {
           await SplashScreen.hideAsync();
         } catch (e) {
@@ -57,54 +52,57 @@ const Index = () => {
     }
     
     hideSplash();
-  }, [appIsReady]);
+  }, [appIsReady, isInitialized]);
 
-  // Check authentication status and redirect if needed
+  // Handle authentication-based navigation
   useEffect(() => {
-    const checkAuthAndRedirect = async () => {
+    const handleAuthNavigation = async () => {
+      // Only proceed if auth is initialized, app is ready, and we haven't navigated yet
+      if (!isInitialized || !appIsReady || hasNavigated || isLoading) {
+        return;
+      }
+
       try {
-        console.log('Auth check:', { isAuthenticated, userData });
-        if (isAuthenticated && userData) {
-          // Check user role and redirect accordingly
+        if (isAuthenticated() && userData) {
+          console.log('User authenticated, redirecting...', userData.role);
+          setHasNavigated(true);
+          
           if (userData.role === 'admin') {
-            console.log('Redirecting to admin dashboard');
             await router.replace('/(admintabs)/admindashboard');
           } else if (userData.role === 'member') {
-            console.log('Redirecting to member dashboard');
             await router.replace('/(tabs)/memberdashboard');
           } else {
             console.warn('Unknown user role:', userData.role);
-            // Optionally, redirect to a default dashboard or show an error
-            await router.replace('/(tabs)/admindashboard');
+            // Default fallback
+            await router.replace('/(tabs)/memberdashboard');
           }
         } else {
-          console.log('User not authenticated or userData not available');
+          console.log('User not authenticated, staying on landing page');
         }
-      } catch (e) {
-        console.error('Navigation error:', e);
-        setError('Navigation error: ' + e.message);
+      } catch (error) {
+        console.error('Navigation error:', error);
       }
     };
-    
-    if (appIsReady) {
-      checkAuthAndRedirect();
-    }
-  }, [appIsReady, isAuthenticated, userData, router]);
 
-  // Show loading indicator while fonts are loading
-  if (!appIsReady || !fontsLoaded) {
+    handleAuthNavigation();
+  }, [isInitialized, appIsReady, isAuthenticated, userData, hasNavigated, isLoading, router]);
+
+  // Show loading screen while initializing
+  if (!appIsReady || !isInitialized || isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
-  // Show error if navigation fails
-  if (error) {
+  // Don't render the landing page if user is authenticated (prevents flash)
+  if (isAuthenticated() && userData && !hasNavigated) {
     return (
       <View style={styles.loadingContainer}>
-        <Text style={{ color: 'red', fontSize: 16 }}>{error}</Text>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Redirecting...</Text>
       </View>
     );
   }
@@ -167,6 +165,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#1a1a2e',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontFamily: 'Outfit_400Regular',
   },
   headerContainer: {
     marginTop: Platform.OS === 'android' ? StatusBar.currentHeight : 20,
