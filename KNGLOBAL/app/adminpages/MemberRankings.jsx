@@ -357,7 +357,7 @@ const MemberRankings = () => {
                 const rankBadge = getRankBadge(index);
                 
                 return (
-                  <TouchableOpacity 
+                  <View
                     key={member.id || index} 
                     style={styles.memberItem}
                   >
@@ -381,7 +381,7 @@ const MemberRankings = () => {
                     <View style={styles.valueContainer}>
                       <Text style={styles.shareValue}>{formatCurrency(member.totalValue)}</Text>
                     </View>
-                  </TouchableOpacity>
+                  </View>
                 );
               })}
             </>

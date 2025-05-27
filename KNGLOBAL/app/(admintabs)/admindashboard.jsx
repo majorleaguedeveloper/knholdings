@@ -220,7 +220,7 @@ const AdminDashboard = () => {
 
             {/* Total Shares Card */}
             <TouchableOpacity
-              onPress={() => router.push('/adminpages/ManageShares')}
+              onPress={() => router.push('/adminpages/AdminSharesScreen')}
               style={styles.statCardWrapper}
             >
               <LinearGradient
