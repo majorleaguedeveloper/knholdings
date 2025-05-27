@@ -360,7 +360,6 @@ const MemberRankings = () => {
                   <TouchableOpacity 
                     key={member.id || index} 
                     style={styles.memberItem}
-                    onPress={() => router.push(`/adminpages/MemberDetail?id=${member.id}`)}
                   >
                     <View style={[styles.rankBadge, rankBadge.style]}>
                       {sortOrder === 'desc' && index < 3 ? (

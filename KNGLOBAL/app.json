@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "KNGLOBAL",
-    "slug": "KNGLOBAL",
+    "slug": "knglobal",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -42,7 +42,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f6a54d3b-0b20-4d15-8d14-624aaaaa31d8"
+        "projectId": "955d8872-63b7-41c5-9d20-1a1f99705f54"
       }
     },
     "runtimeVersion": {
