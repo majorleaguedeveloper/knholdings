@@ -11,11 +11,11 @@ export default function TabLayout() {
   // Define tab bar styles based on platform
   const tabBarStyle = {
     position: 'absolute',
-    height: 60 + (Platform.OS === 'ios' ? insets.bottom : 0),
+    height: 60 + insets.bottom, // Always add insets.bottom
     backgroundColor: Platform.OS === 'ios' ? 'transparent' : '#FFFFFF',
     borderTopWidth: 0,
     elevation: 0,
-    paddingBottom: Platform.OS === 'ios' ? insets.bottom : 0,
+    paddingBottom: insets.bottom, // Always add insets.bottom
     paddingTop: 5,
   };
 

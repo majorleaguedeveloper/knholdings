@@ -555,10 +555,7 @@ const ManageMembers = () => {
       <StatusBar barStyle="dark-content" backgroundColor="#F9F9FB" />
       
       <View style={styles.header}>
-        <Text style={styles.title}>Manage Members</Text>
-        <TouchableOpacity style={styles.refreshButton} onPress={fetchMembers}>
-          <Ionicons name="refresh" size={22} color="#007AFF" />
-        </TouchableOpacity>
+        <Text style={styles.title}>Member Management</Text>
       </View>
 
       <View style={styles.actionBar}>
@@ -679,6 +676,8 @@ const ManageMembers = () => {
 
 const styles = StyleSheet.create({
   container: {
+    paddingTop: 25,
+    paddingBottom: 25,
     flex: 1,
     backgroundColor: '#F9F9FB',
   },
@@ -690,9 +689,7 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 20, 
     paddingTop: 16,
     paddingBottom: 12,
   },

@@ -10,6 +10,7 @@ import {
   StatusBar,
   Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AuthContext from '../../contexts/Authcontext';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
@@ -132,7 +133,7 @@ const AllAnnouncements = () => {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
       <StatusBar barStyle="dark-content" backgroundColor="#f6f8fa" />
       
       {/* Header */}
@@ -215,7 +216,7 @@ const AllAnnouncements = () => {
           ))
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

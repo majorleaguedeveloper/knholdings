@@ -190,7 +190,7 @@ const MemberDashboard = () => {
   const statsData = getStatsData();
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={{ flex: 1 }}>
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollViewContent}
@@ -431,13 +431,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#f5f7fa',
-    paddingBottom: 50,
+    
   },
   scrollView: {
     flex: 1,
-  },
-  scrollViewContent: {
-    paddingBottom: 0, // Extra padding to account for tab bar
+    paddingTop: 0,
   },
   loadingContainer: {
     flex: 1,

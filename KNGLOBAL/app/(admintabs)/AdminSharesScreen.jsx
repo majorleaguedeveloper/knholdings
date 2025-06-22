@@ -387,7 +387,7 @@ const AdminSharesScreen = () => {
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.areacontainer}>
       <StatusBar style="light" />
       {/* Header with Gradient */}
       <LinearGradient
@@ -504,10 +504,16 @@ const AdminSharesScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  areacontainer: { 
+    flex: 1, 
+    paddingBottom: 80,
+    paddingTop: 10 
+  },
   container: {
     flex: 1,
     backgroundColor: '#F7F9FC',
-    paddingBottom: 50
+    paddingTop: 20,
+    paddingBottom: 80, // Adjusted for header height
   },
   headerContainer: {
     paddingTop: Platform.OS === 'ios' ? 0 : 25,

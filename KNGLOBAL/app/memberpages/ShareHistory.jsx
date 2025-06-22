@@ -318,6 +318,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f7fa',
+    paddingTop: 23,
+    paddingBottom:50, // Adjusted for tab bar
   },
   loadingContainer: {
     flex: 1,

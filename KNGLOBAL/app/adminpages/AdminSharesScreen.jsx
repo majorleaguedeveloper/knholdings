@@ -401,9 +401,6 @@ const AdminSharesScreen = () => {
             <Text style={styles.headerTitle}>Shares</Text>
             <Text style={styles.headerSubtitle}>Monitor and track share distribution</Text>
           </View>
-          <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
-            <MaterialIcons name="refresh" size={22} color="#FFF" />
-          </TouchableOpacity>
         </View>
         {/* Tab Navigation */}
         <View style={styles.tabContainer}>
@@ -505,6 +502,8 @@ const AdminSharesScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
+    paddingTop: 10,
+    paddingBottom: 80,
     flex: 1,
     backgroundColor: '#F7F9FC',
   },
@@ -522,6 +521,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
+    textAlign: 'center',
     fontFamily: 'Outfit_700Bold',
     fontSize: 26,
     color: '#FFFFFF',
@@ -529,6 +529,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
   },
   headerSubtitle: {
+    textAlign: 'center',
     fontFamily: 'Outfit_400Regular',
     fontSize: 15,
     color: 'rgba(255, 255, 255, 0.85)',

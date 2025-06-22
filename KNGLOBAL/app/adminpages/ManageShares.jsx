@@ -504,6 +504,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   container: {
+    paddingTop: 40, // Adjusted for header height
+    paddingBottom: 80,
     flex: 1,
     backgroundColor: COLORS.background,
   },

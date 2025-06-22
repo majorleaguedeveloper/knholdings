@@ -404,6 +404,8 @@ const AdminDashboard = () => {
 
 const styles = StyleSheet.create({
   container: {
+    paddingTop: 20,
+    paddingBottom: 80,
     flex: 1,
     backgroundColor: '#F7F9FC',
   },

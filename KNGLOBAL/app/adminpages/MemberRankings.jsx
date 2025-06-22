@@ -405,6 +405,8 @@ const MemberRankings = () => {
 
 const styles = StyleSheet.create({
   container: {
+    paddingTop: 20,
+    paddingBottom: 70,
     flex: 1,
     backgroundColor: '#F7F9FC',
   },
